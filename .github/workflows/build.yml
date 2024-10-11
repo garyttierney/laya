@@ -39,7 +39,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
-
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=${{ matrix.build_configuration.cpu }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 

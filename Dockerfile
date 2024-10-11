@@ -13,6 +13,9 @@ RUN RUSTFLAGS="-C target-feature=+crt-static -C target-cpu=${TARGET_CPU}" cargo 
 RUN ls /build/target/release
 
 FROM scratch
+ARG TARGET
+ARG TARGET_CPU
+
 COPY --from=builder /build/target/${TARGET}/release/laya-server /bin/laya-server
 
 ENTRYPOINT ["/bin/laya-server"]

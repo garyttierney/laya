@@ -3,7 +3,7 @@ FROM docker.io/library/rust:1.81-bookworm as builder
 ARG TARGET="x86_64-unknown-linux-gnu"
 ARG TARGET_CPU="native"
 
-RUN apt-get update -y && apt-get install -y linux-headers-$(uname -r) git libc6-dev
+RUN apt-get update -y && apt-get install -y linux-headers-generic git libc6-dev
 RUN rustup install stable
 
 WORKDIR /build

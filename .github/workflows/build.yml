@@ -10,6 +10,9 @@ jobs:
   build:
     name: "${{ matrix.build_configuration.name }}"
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ matrix.build_configuration.name }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -17,17 +20,17 @@ jobs:
           - platform: linux/amd64
             triple: x86_64-unknown-linux-gnu
             cpu: znver4
-            name: AMD Zen4
+            name: amd-zen4
 
           - platform: linux/amd64
             triple: x86_64-unknown-linux-gnu
             cpu: sapphirerapids
-            name: Intel Xeon Gen4
+            name: intel-xeon-gen4
 
           - platform: linux/arm/v8
             triple: aarch64-unknown-linux-gnu
             cpu: neoverse-v2
-            name: AWS Graviton4
+            name: aws-graviton4
     steps:
       - name: Prepare
         run: |
@@ -39,10 +42,19 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            # tag event
+            type=ref,enable=true,priority=600,prefix=,suffix=,event=tag
+            # pull request event
+            type=ref,enable=true,priority=600,prefix=pr-,suffix=,event=pr
+          labels: |
+            target-cpu=${{ matrix.build_configuration.cpu }}
+            target-triple=${{ matrix.build_configuration.triple }}
           flavor: |
             latest=auto
             prefix=
-            suffix=${{ matrix.build_configuration.cpu }}
+            suffix=-${{ matrix.build_configuration.name }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -69,7 +81,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ matrix.build_configuration.name }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1

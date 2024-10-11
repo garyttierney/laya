@@ -7,6 +7,11 @@ license = "Apache-2.0 OR MIT"
 [workspace]
 members = ["openjp2-rs"]
 
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+
 [dependencies]
 clap = { version = "4.5.13", features = ["derive"] }
 futures-lite = "1.13" # glommio requires 1.13.0

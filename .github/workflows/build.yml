@@ -29,7 +29,7 @@ jobs:
             cpu: sapphirerapids
             name: intel-xeon-gen4
 
-          - platform: linux/arm/v8
+          - platform: linux/arm64/v8
             triple: aarch64-unknown-linux-gnu
             cpu: neoverse-v2
             name: aws-graviton4

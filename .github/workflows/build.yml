@@ -1,14 +1,14 @@
-name: ci
+name: Build containers
 
 on:
   push:
 
 env:
-  REGISTRY_IMAGE: user/app
+  REGISTRY_IMAGE: digirati-co-uk/laya
 
 jobs:
   build:
-    name: "Build optimized container (${{ matrix.build_configuration.name }})"
+    name: "${{ matrix.build_configuration.name }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -52,7 +52,7 @@ jobs:
         with:
           platforms: ${{ matrix.build_configuration.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=false
           build-args: |
             TARGET=${{ matrix.build_configuration.triple }}
             TARGET_CPU=${{ matrix.build_configuration.cpu }}

@@ -85,7 +85,8 @@ jobs:
           build-args: |
             TARGET=${{ matrix.build_configuration.triple }}
             TARGET_CPU=${{ matrix.build_configuration.cpu }}
-
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:

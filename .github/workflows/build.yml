@@ -1,4 +1,4 @@
-name: Build containers
+name: Build artifacts
 
 on:
   push:
@@ -90,19 +90,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push by digest
+      - name: Build and push generic image digest
         id: build
         uses: docker/build-push-action@v6
         with:
           platforms: ${{ matrix.build_configuration.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ steps.meta.outputs.tags }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            TARGET=${{ matrix.build_configuration.triple }}
+            TARGET_CPU=${{ matrix.build_configuration.cpu }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+        if: matrix.build_configuration.generic
+
+      - name: Build and push platform specific image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          platforms: ${{ matrix.build_configuration.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.output.tags }}
           push: true
           build-args: |
             TARGET=${{ matrix.build_configuration.triple }}
             TARGET_CPU=${{ matrix.build_configuration.cpu }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        if: !matrix.build_configuration.generic
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1

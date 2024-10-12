@@ -8,7 +8,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build:
+  build-containers:
     name: "${{ matrix.build_configuration.name }}"
     runs-on: "${{ matrix.build_configuration.runner || 'ubuntu-latest' }}"
     concurrency:
@@ -24,13 +24,6 @@ jobs:
             name: x64-generic
             generic: true
             runner: ubuntu-latest
-
-          - platform: linux/arm64
-            triple: aarch64-apple-darwin
-            cpu: apple-latest
-            name: macos
-            generic: true
-            runner: macos-latest
 
 #          - platform: linux/arm64/v8
 #            triple: aarch64-unknown-linux-gnu
@@ -152,7 +145,7 @@ jobs:
     name: Merge generic manifests
     runs-on: ubuntu-latest
     needs:
-      - build
+      - build-containers
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4

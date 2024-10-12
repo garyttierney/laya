@@ -97,7 +97,7 @@ jobs:
         with:
           platforms: ${{ matrix.build_configuration.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ steps.meta.output.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           build-args: |
             TARGET=${{ matrix.build_configuration.triple }}
@@ -111,7 +111,7 @@ jobs:
         with:
           platforms: ${{ matrix.build_configuration.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ steps.meta.output.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           push: true
           build-args: |
             TARGET=${{ matrix.build_configuration.triple }}

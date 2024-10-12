@@ -10,7 +10,7 @@ env:
 jobs:
   build:
     name: "${{ matrix.build_configuration.name }}"
-    runs-on: ubuntu-latest
+    runs-on: "${{ matrix.build_configuration.runner || 'ubuntu-latest' }}"
     concurrency:
       group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ matrix.build_configuration.name }}
       cancel-in-progress: true
@@ -23,6 +23,14 @@ jobs:
             cpu: x86-64-v3
             name: x64-generic
             generic: true
+            runner: ubuntu-latest
+
+          - platform: linux/arm64
+            triple: aarch64-apple-darwin
+            cpu: apple-latest
+            name: macos
+            generic: true
+            runner: macos-latest
 
 #          - platform: linux/arm64/v8
 #            triple: aarch64-unknown-linux-gnu
@@ -76,7 +84,7 @@ jobs:
           flavor: |
             latest=auto
             prefix=
-            suffix=${{ !matrix.build_configuration.generic && format('-{0}', matrix.build_configuration.name) || '' }}
+            suffix=${{ matrix.build_configuration.generic == false && format('-{0}', matrix.build_configuration.name) || '' }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -102,7 +110,7 @@ jobs:
             TARGET_CPU=${{ matrix.build_configuration.cpu }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-        if: matrix.build_configuration.generic
+        if: matrix.build_configuration.generic == true
 
       - name: Build and push platform specific image
         id: build
@@ -117,7 +125,7 @@ jobs:
             TARGET_CPU=${{ matrix.build_configuration.cpu }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-        if: !matrix.build_configuration.generic
+        if: matrix.build_configuration.generic == false
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
@@ -131,7 +139,7 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
-        if: matrix.build_configuration.generic
+        if: matrix.build_configuration.generic == true
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
@@ -140,7 +148,7 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
-        if: matrix.build_configuration.generic
+        if: matrix.build_configuration.generic == true
   merge:
     name: Merge generic manifests
     runs-on: ubuntu-latest

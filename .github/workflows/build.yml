@@ -25,11 +25,11 @@ jobs:
             generic: true
             runner: ubuntu-latest
 
-#          - platform: linux/arm64/v8
-#            triple: aarch64-unknown-linux-gnu
-#            cpu: neoverse-v1
-#            name: arm64-generic
-#            generic: true
+          - platform: linux/arm64/v8
+            triple: aarch64-unknown-linux-gnu
+            cpu: neoverse-v1
+            name: arm64-generic
+            generic: true
 
           - platform: linux/amd64
             triple: x86_64-unknown-linux-gnu
@@ -43,11 +43,11 @@ jobs:
             name: intel-xeon-gen4
             generic: false
 
-#          - platform: linux/arm64/v8
-#            triple: aarch64-unknown-linux-gnu
-#            cpu: neoverse-v2
-#            name: aws-graviton4
-#            generic: false
+          - platform: linux/arm64/v8
+            triple: aarch64-unknown-linux-gnu
+            cpu: neoverse-v2
+            name: aws-graviton4
+            generic: false
 
     permissions:
       contents: read

@@ -108,6 +108,7 @@ jobs:
 
       - name: Build and push platform specific image
         uses: docker/build-push-action@v6
+        id: build_platform_specific
         with:
           platforms: ${{ matrix.build_configuration.platform }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -124,7 +125,7 @@ jobs:
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-digest: ${{ steps.build.outputs.digest || steps.build_platform_specific.outputs.digest }}
           push-to-registry: true
 
       - name: Export digest

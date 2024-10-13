@@ -26,7 +26,7 @@ name = "apple"
 triple = "aarch64-apple-darwin"
 cpu = "apple-latest"
 runner = "macos-latest"
-generic = false
+generic = true
 docker = false
 
 [[workspace.metadata.distributions]]
@@ -58,12 +58,9 @@ incremental = false
 debug = false
 
 [features]
-default = ["glommio", "rt-tokio"]
+default = ["rt-tokio"]
 glommio = ["dep:glommio"]
 rt-tokio = ["dep:tokio"]
-
-[target.'cfg(linux)'.features]
-default = ["glommio"]
 
 [dependencies]
 console-subscriber = { version = "0.4.0" }

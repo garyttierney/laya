@@ -5,9 +5,6 @@ edition = "2021"
 license = "Apache-2.0 OR MIT"
 publish = false
 
-[workspace]
-members = ["openjp2-rs"]
-
 # Config for 'cargo dist'
 [[workspace.metadata.distributions]]
 name = "x64-generic"

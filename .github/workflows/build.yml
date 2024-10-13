@@ -7,48 +7,63 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-containers:
-    name: "${{ matrix.build_configuration.name }}"
-    runs-on: "${{ matrix.build_configuration.runner || 'ubuntu-latest' }}"
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ matrix.build_configuration.name }}
-      cancel-in-progress: true
+  plan:
+    name: "Create build plan"
+    runs-on: ubuntu-latest
+    outputs:
+      docker-distributions: ${{ steps.plan.outputs.docker_distributions }}
+      native-distributions: ${{ steps.plan.outputs.native_distributions }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: plan_docker
+        run: |
+          docker_distributions=$(cargo metadata | jq -c -r '.metadata.distributions | map(select(.docker != false))')
+          echo "docker_distributions=$docker_distributions" >> "$GITHUB_OUTPUT"
+      - id: plan
+        run: |
+          native_distributions=$(cargo metadata | jq -c -r '.metadata.distributions')
+          echo "native_distributions=$native_distributions" >> "$GITHUB_OUTPUT"
+      - id: version
+        run: echo "version=$(cargo pkgid | cut -d '@' -f2)" >> $GITHUB_OUTPUT
+  build-native:
+    needs: plan
+    name: "${{ matrix.name }} (Native)"
+    runs-on: "${{ matrix.runner || 'ubuntu-latest' }}"
     strategy:
       fail-fast: false
       matrix:
-        build_configuration:
-          - platform: linux/amd64
-            triple: x86_64-unknown-linux-gnu
-            cpu: x86-64-v3
-            name: x64-generic
-            generic: true
-            runner: ubuntu-latest
+        include: ${{ fromJson(needs.plan.outputs.native-distributions) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: |
+          cargo build --target ${{ matrix.triple }} --release
+          mkdir artifacts/
+          cp target/${{ matrix.triple }}/release/laya-server artifacts/laya-server-${{ matrix.name }}
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static -C target-cpu=${{ matrix.cpu }}"
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-artifacts
+          path: |
+            target/${{ matrix.triple }}/release/laya-server-${{ matrix.name }}
 
-          - platform: linux/arm64/v8
-            triple: aarch64-unknown-linux-gnu
-            cpu: neoverse-v1
-            name: arm64-generic
-            generic: true
-
-          - platform: linux/amd64
-            triple: x86_64-unknown-linux-gnu
-            cpu: znver4
-            name: amd-zen4
-            generic: false
-
-          - platform: linux/amd64
-            triple: x86_64-unknown-linux-gnu
-            cpu: sapphirerapids
-            name: intel-xeon-gen4
-            generic: false
-
-          - platform: linux/arm64/v8
-            triple: aarch64-unknown-linux-gnu
-            cpu: neoverse-v2
-            name: aws-graviton4
-            generic: false
-
+  build-containers:
+    needs: plan
+    name: "${{ matrix.name }} (Docker)"
+    runs-on: "${{ matrix.runner || 'ubuntu-latest' }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.docker-distributions) }}
     permissions:
       contents: read
       packages: write
@@ -57,7 +72,7 @@ jobs:
     steps:
       - name: Prepare
         run: |
-          platform=${{ matrix.build_configuration.platform }}
+          platform=${{ matrix.docker }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Docker meta
@@ -72,12 +87,12 @@ jobs:
             # pull request event
             type=ref,enable=true,priority=600,prefix=pr-,suffix=,event=pr
           labels: |
-            target-cpu=${{ matrix.build_configuration.cpu }}
-            target-triple=${{ matrix.build_configuration.triple }}
+            target-cpu=${{ matrix.cpu }}
+            target-triple=${{ matrix.triple }}
           flavor: |
             latest=auto
             prefix=
-            suffix=${{ matrix.build_configuration.generic == false && format('-{0}', matrix.build_configuration.name) || '' }}
+            suffix=${{ matrix.generic == false && format('-{0}', matrix.name) || '' }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -95,30 +110,30 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          platforms: ${{ matrix.build_configuration.platform }}
+          platforms: ${{ matrix.docker }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           build-args: |
-            TARGET=${{ matrix.build_configuration.triple }}
-            TARGET_CPU=${{ matrix.build_configuration.cpu }}
+            TARGET=${{ matrix.triple }}
+            TARGET_CPU=${{ matrix.cpu }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-        if: matrix.build_configuration.generic == true
+        if: matrix.generic == true
 
       - name: Build and push platform specific image
         uses: docker/build-push-action@v6
         id: build_platform_specific
         with:
-          platforms: ${{ matrix.build_configuration.platform }}
+          platforms: ${{ matrix.docker }}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           push: true
           build-args: |
-            TARGET=${{ matrix.build_configuration.triple }}
-            TARGET_CPU=${{ matrix.build_configuration.cpu }}
+            TARGET=${{ matrix.triple }}
+            TARGET_CPU=${{ matrix.cpu }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-        if: matrix.build_configuration.generic == false
+        if: matrix.generic == false
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
@@ -132,17 +147,17 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
-        if: matrix.build_configuration.generic == true
+        if: matrix.generic == true
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.build_configuration.name }}
+          name: digests-${{ matrix.name }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
-        if: matrix.build_configuration.generic == true
-  merge:
+        if: matrix.generic == true
+  merge-container-manifests:
     name: Merge generic manifests
     runs-on: ubuntu-latest
     needs:
@@ -177,8 +192,8 @@ jobs:
             # pull request event
             type=ref,enable=true,priority=600,prefix=pr-,suffix=,event=pr
           labels: |
-            target-cpu=${{ matrix.build_configuration.cpu }}
-            target-triple=${{ matrix.build_configuration.triple }}
+            target-cpu=${{ matrix.cpu }}
+            target-triple=${{ matrix.triple }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
@@ -189,3 +204,43 @@ jobs:
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+  release-plz-release:
+    name: Release-plz release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Create a PR with the new versions and changelog, preparing the next release.
+  release-plz-pr:
+    name: Release-plz PR
+    runs-on: ubuntu-latest
+    needs:
+      - build-native
+      - merge-container-manifests
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
+        with:
+          command: release-pr
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

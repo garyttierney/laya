@@ -3,9 +3,55 @@ name = "laya"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0 OR MIT"
+publish = false
 
 [workspace]
 members = ["openjp2-rs"]
+
+# Config for 'cargo dist'
+[[workspace.metadata.distributions]]
+name = "x64-generic"
+triple = "x86_64-unknown-linux-gnu"
+cpu = "x86-64-v3"
+runner = "ubuntu-latest"
+docker = "linux/amd64"
+generic = true
+
+[[workspace.metadata.distributions]]
+name = "arm64-generic"
+triple = "aarch64-unknown-linux-gnu"
+cpu = "neoverse-v1"
+generic = true
+docker = "linux/arm64"
+
+[[workspace.metadata.distributions]]
+name = "apple"
+triple = "aarch64-apple-darwin"
+cpu = "apple-latest"
+runner = "macos-latest"
+generic = false
+docker = false
+
+[[workspace.metadata.distributions]]
+name = "amd-zen4"
+triple = "x86_64-unknown-linux-gnu"
+cpu = "znver4"
+generic = false
+docker = "linux/amd64"
+
+[[workspace.metadata.distributions]]
+name = "intel-xeon-gen4"
+triple = "x86_64-unknown-linux-gnu"
+cpu = "sapphirerapids"
+generic = false
+docker = "linux/amd64"
+
+[[workspace.metadata.distributions]]
+triple = "aarch64-unknown-linux-gnu"
+cpu = "neoverse-v2"
+name = "aws-graviton4"
+generic = false
+docker = "linux/arm64/v8"
 
 [profile.release]
 lto = "fat"

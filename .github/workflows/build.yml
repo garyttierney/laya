@@ -20,6 +20,7 @@ jobs:
       native-distributions: ${{ steps.plan.outputs.native_distributions }}
       version: ${{ steps.version.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
       - id: plan_docker
         run: |
           docker_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.docker != false))')
@@ -70,6 +71,7 @@ jobs:
       attestations: write
       id-token: write
     steps:
+      - uses: actions/checkout@v4
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

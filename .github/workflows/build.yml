@@ -36,7 +36,7 @@ jobs:
           echo "docker_distributions=$docker_distributions" >> "$GITHUB_OUTPUT"
       - id: plan
         run: |
-          native_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions')
+          native_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.generic == true))')
           echo "native_distributions=$native_distributions" >> "$GITHUB_OUTPUT"
       - id: version
         run: echo "version=$(cargo pkgid | cut -d '@' -f2)" >> $GITHUB_OUTPUT

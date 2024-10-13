@@ -57,6 +57,7 @@ jobs:
           target: ${{ matrix.triple }}
       - name: Build
         run: |
+          mkdir artifacts
           cargo build --target ${{ matrix.triple }} --release --bin laya-server
           cp target/${{ matrix.triple }}/release/laya-server artifacts/laya-server-${{ matrix.name }}
         env:
@@ -171,7 +172,7 @@ jobs:
           retention-days: 1
         if: matrix.generic == true
   merge-container-manifests:
-    name: Merge generic manifests
+    name: Merge Docker manifests
     runs-on: ubuntu-latest
     needs:
       - build-containers

@@ -12,7 +12,6 @@ use hyper::{Method, Request, Response, StatusCode};
 use crate::hyper_compat::ResponseBody;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
 use crate::iiif::{Format, ImageRequest, Quality, Region, Rotation, Size};
-use crate::resolve::DiskImageSource;
 
 mod executor;
 mod server;
@@ -22,7 +21,7 @@ const PREFIX: &str = "/"; // TODO: read this from config
 
 pub async fn handle_request(
     req: Request<Incoming>,
-    images: Arc<DiskImageSource>,
+    images: (),
 ) -> Result<Response<ResponseBody>, Infallible> {
     match (req.method(), req.uri().path()) {
         (&Method::GET, p) if p.ends_with("info.json") => info_request(p),
@@ -34,18 +33,15 @@ pub async fn handle_request(
     }
 }
 
-async fn image_request(
-    path: &str,
-    source: Arc<DiskImageSource>,
-) -> Result<Response<ResponseBody>, Infallible> {
+async fn image_request(path: &str, source: ()) -> Result<Response<ResponseBody>, Infallible> {
     let request = match decode_image_request(path) {
         Ok(r) => r,
         Err(e) => return Ok(bad_request(e.to_string())),
     };
 
-    let Ok(image) = source.resolve(request.identifier()).await else {
-        return Ok(bad_request("io error")); // TODO
-    };
+    // let Ok(image) = todo!("fix this"); source.resolve(request.identifier()).await else {
+    //     return Ok(bad_request("io error")); // TODO
+    // };
 
     Ok(Response::builder()
         .status(StatusCode::OK)

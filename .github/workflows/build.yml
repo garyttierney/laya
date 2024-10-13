@@ -25,7 +25,7 @@ jobs:
     name: "Create build plan"
     runs-on: ubuntu-latest
     outputs:
-      docker-distributions: ${{ steps.plan.outputs.docker_distributions }}
+      docker-distributions: ${{ steps.plan_docker.outputs.docker_distributions }}
       native-distributions: ${{ steps.plan.outputs.native_distributions }}
       version: ${{ steps.version.outputs.version }}
     steps:

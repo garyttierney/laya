@@ -2,6 +2,9 @@ name: Build artifacts
 
 on:
   push:
+    branches:
+      - main
+  release:
 
 env:
   REGISTRY: ghcr.io
@@ -52,15 +55,19 @@ jobs:
       - uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.triple }}
-      - uses: taiki-e/upload-rust-binary-action@v1
-        with:
-          bin: laya-server
-          bin-leading-dir: ${{ matrix.name }}
-          target: ${{ matrix.triple }}
-          tar: all
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        run: |
+          cargo build --target ${{ matrix.triple }} --release --bin laya-server
+          cp target/${{ matrix.triple }}/release/laya-server artifacts/laya-server-${{ matrix.name }}
         env:
-          RUSTFLAGS: "-Ctarget-cpu=${{ matrix.cpu }} -Ctarget-feature=+crt-static"
+          RUSTFLAGS: "-C target-feature=+crt-static -C target-cpu=${{ matrix.cpu }}"
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-artifacts
+          path: |
+            artifacts/
+
   build-containers:
     needs: plan
     name: "${{ matrix.name }} (Docker)"

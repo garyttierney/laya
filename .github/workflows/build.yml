@@ -65,7 +65,7 @@ jobs:
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
         with:
-          name: native-artifacts
+          name: native-artifacts-${{ matrix.name }}
           path: |
             artifacts/
 

@@ -1,7 +1,9 @@
 use std::error::Error;
 
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
 
 pub fn install_telemetry() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let console_layer = console_subscriber::spawn();

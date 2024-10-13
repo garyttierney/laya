@@ -1,11 +1,10 @@
-use std::{error::Error, future::Future};
+use std::error::Error;
+use std::future::Future;
 
-use hyper::{
-    body::Incoming,
-    rt::{Executor, Read, Timer, Write},
-    service::Service,
-    Request, Response,
-};
+use hyper::body::Incoming;
+use hyper::rt::{Executor, Read, Timer, Write};
+use hyper::service::Service;
+use hyper::{Request, Response};
 use hyper_util::rt::{TokioIo, TokioTimer};
 
 use crate::hyper_compat::ResponseBody;

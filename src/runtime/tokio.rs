@@ -1,12 +1,15 @@
-use std::{error::Error, future::Future, net::SocketAddr};
+use std::error::Error;
+use std::future::Future;
+use std::net::SocketAddr;
 
-use hyper::{body::Incoming, service::Service, Request, Response};
+use hyper::body::Incoming;
+use hyper::service::Service;
+use hyper::{Request, Response};
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use tokio::net::{TcpListener, TcpStream};
 
-use crate::hyper_compat::ResponseBody;
-
 use super::ServerRuntime;
+use crate::hyper_compat::ResponseBody;
 
 pub struct TokioServerRuntime;
 
@@ -25,8 +28,6 @@ impl ServerRuntime for TokioServerRuntime {
     {
         TokioExecutor::new()
     }
-
-
 
     fn listen<S>(service: S, _: Self::Config)
     where

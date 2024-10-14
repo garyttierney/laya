@@ -1,31 +1,16 @@
-use std::error::Error;
-
-use opentelemetry::{
-    global::{self, set_tracer_provider},
-    trace::TracerProvider,
-    Key, KeyValue,
-};
-use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_sdk::{
-    metrics::{
-        reader::DefaultTemporalitySelector, Aggregation, Instrument, MeterProviderBuilder,
-        PeriodicReader, SdkMeterProvider, Stream,
-    },
-    propagation::TraceContextPropagator,
-    runtime,
-    trace::{BatchConfig, RandomIdGenerator, Sampler, Tracer},
-    Resource,
-};
-use opentelemetry_semantic_conventions::{
-    attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_NAME, SERVICE_VERSION},
-    SCHEMA_URL,
-};
+use opentelemetry::global::{self, set_tracer_provider};
+use opentelemetry::trace::TracerProvider;
+use opentelemetry::KeyValue;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::trace::{BatchConfig, RandomIdGenerator, Sampler};
+use opentelemetry_sdk::{runtime, Resource};
+use opentelemetry_semantic_conventions::attribute::{SERVICE_NAME, SERVICE_VERSION};
+use opentelemetry_semantic_conventions::SCHEMA_URL;
 use tokio::runtime::Runtime;
-use tracing::{level_filters::LevelFilter, Level};
+use tracing::Level;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::Layer;
 
 fn resource() -> Resource {
     Resource::from_schema_url(
@@ -54,7 +39,7 @@ pub fn install_telemetry_collector() -> Runtime {
                 // Customize sampling strategy
                 .with_sampler(Sampler::AlwaysOn)
                 // If export trace to AWS X-Ray, you can use XrayIdGenerator
-                .with_id_generator(Jae::default())
+                .with_id_generator(RandomIdGenerator::default())
                 .with_resource(resource()),
         )
         .with_batch_config(BatchConfig::default())

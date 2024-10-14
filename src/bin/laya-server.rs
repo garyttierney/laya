@@ -1,4 +1,5 @@
-use std::{path::Path, time::Duration};
+use std::path::Path;
+use std::time::Duration;
 
 use clap::Parser;
 use laya::runtime::tokio::TokioRuntime;

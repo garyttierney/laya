@@ -5,48 +5,48 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use hyper::body::{Bytes, Incoming};
+use http_body_util::combinators::BoxBody;
+use http_body_util::{BodyExt, Empty, Full};
+use hyper::body::{Body, Bytes, Incoming};
 use hyper::service::Service;
 use hyper::{Method, Request, Response, StatusCode};
 
-use crate::hyper_compat::ResponseBody;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
 use crate::iiif::{Format, ImageRequest, Quality, Region, Rotation, Size};
 
-mod executor;
-mod server;
-mod stream;
-
 const PREFIX: &str = "/"; // TODO: read this from config
 
+#[tracing::instrument]
 pub async fn handle_request(
     req: Request<Incoming>,
     images: (),
-) -> Result<Response<ResponseBody>, Infallible> {
+) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
     match (req.method(), req.uri().path()) {
         (&Method::GET, p) if p.ends_with("info.json") => info_request(p),
         (&Method::GET, p) if p.starts_with(PREFIX) => image_request(p, images).await,
-        _ => Ok(Response::builder()
+        _ => Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(ResponseBody::new("notfound"))
-            .unwrap()),
+            .body(Empty::new().map_err(|e| unreachable!()).boxed()),
     }
 }
 
-async fn image_request(path: &str, source: ()) -> Result<Response<ResponseBody>, Infallible> {
+#[tracing::instrument]
+async fn image_request(
+    path: &str,
+    source: (),
+) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
     let request = match decode_image_request(path) {
         Ok(r) => r,
-        Err(e) => return Ok(bad_request(e.to_string())),
+        Err(e) => return bad_request(e.to_string()),
     };
 
     // let Ok(image) = todo!("fix this"); source.resolve(request.identifier()).await else {
     //     return Ok(bad_request("io error")); // TODO
     // };
 
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
-        .body(ResponseBody::new("OK"))
-        .unwrap())
+        .body(Empty::new().map_err(|e| unreachable!()).boxed())
 }
 
 fn decode_image_request(path: &str) -> Result<ImageRequest, ImageRequestError> {
@@ -132,15 +132,18 @@ impl From<ImageRequestParseError> for ImageRequestError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InfoRequestError {}
 
-fn info_request(path: &str) -> Result<Response<ResponseBody>, Infallible> {
+fn info_request(
+    path: &str,
+) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
     unimplemented!()
 }
 
-fn bad_request<I: Into<Bytes>>(body: I) -> Response<ResponseBody> {
+fn bad_request<I: Into<Bytes>>(
+    body: I,
+) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
     Response::builder()
         .status(StatusCode::BAD_REQUEST)
-        .body(ResponseBody::new(body.into()))
-        .unwrap()
+        .body(Full::new(body.into()).map_err(|e| match e {}).boxed())
 }
 
 #[cfg(test)]

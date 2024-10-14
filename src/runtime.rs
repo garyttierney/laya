@@ -1,21 +1,22 @@
 use std::error::Error;
 use std::future::Future;
 
-use hyper::body::Incoming;
+use http_body_util::combinators::BoxBody;
+use hyper::body::{Bytes, Incoming};
 use hyper::rt::{Executor, Read, Timer, Write};
 use hyper::service::Service;
 use hyper::{Request, Response};
 use hyper_util::rt::{TokioIo, TokioTimer};
+use tracing_subscriber::fmt::format::Full;
 
-use crate::hyper_compat::ResponseBody;
-
-#[cfg(all(feature = "glommio", target_os = "linux"))]
+#[cfg(all(feature = "rt-glommio", target_os = "linux"))]
 pub mod glommio;
 
 #[cfg(feature = "rt-tokio")]
 pub mod tokio;
 
-pub trait Runtime2 {
+pub trait Runtime {
+    type Config;
     type Io: Read + Write + Unpin + Send + Sync + 'static;
 
     fn executor<F>() -> impl Executor<F> + Clone
@@ -24,12 +25,25 @@ pub trait Runtime2 {
         F::Output: Send + 'static;
 
     fn timer() -> impl Timer + Send + Sync + Clone + 'static;
+
+    fn listen<S>(service: S, _: Self::Config)
+    where
+        S: Service<Request<Incoming>, Response = Response<BoxBody<Bytes, std::io::Error>>>
+            + Send
+            + Sync
+            + Clone
+            + 'static,
+        S::Future: Send + Sync + 'static,
+
+        <S as Service<hyper::Request<hyper::body::Incoming>>>::Future: Send,
+        S::Error: Into<Box<dyn Error + Send + Sync>>;
 }
 
-async fn handle_connection<R, S>(io: R::Io, service: S)
+#[tracing::instrument(skip_all, err)]
+async fn handle_connection<R, S>(io: R::Io, service: S) -> Result<(), Box<dyn Error + Send + Sync>>
 where
-    R: Runtime2,
-    S: Service<Request<Incoming>, Response = Response<ResponseBody>>
+    R: Runtime,
+    S: Service<Request<Incoming>, Response = Response<BoxBody<Bytes, std::io::Error>>>
         + Send
         + Sync
         + Clone
@@ -41,46 +55,5 @@ where
     let timer = R::timer();
 
     http.http1().timer(timer.clone()).http2().timer(timer);
-
-    let connection = http.serve_connection_with_upgrades(io, service);
-}
-
-pub trait ServerRuntime {
-    type Config;
-    type Connection: Read + Write + Send + Sync + Unpin + 'static;
-    type Executor<F: Future + Sync + Send + 'static>: Executor<F> + Clone
-    where
-        F::Output: Send + 'static;
-    type Timer: Timer;
-
-    fn executor<F: Future + Sync + Send + 'static>() -> Self::Executor<F>
-    where
-        F::Output: Send + 'static;
-
-    fn listen<S>(service: S, _: Self::Config)
-    where
-        S: Service<Request<Incoming>, Response = Response<ResponseBody>>
-            + Send
-            + Sync
-            + Clone
-            + 'static,
-        S::Future: Send + 'static,
-
-        <S as Service<hyper::Request<hyper::body::Incoming>>>::Future: Send,
-        S::Error: Into<Box<dyn Error + Send + Sync>>;
-
-    fn handle_connection<S>(service: S, io: Self::Connection)
-    where
-        S: Service<Request<Incoming>, Response = Response<ResponseBody>> + Send + Sync + 'static,
-        S::Future: Send + Sync + 'static,
-        S::Error: Into<Box<dyn Error + Send + Sync>>,
-    {
-        let mut http = hyper_util::server::conn::auto::Builder::new(Self::executor());
-        http.http1()
-            .timer(TokioTimer::new())
-            .http2()
-            .timer(TokioTimer::new());
-
-        let connection = http.serve_connection_with_upgrades(io, service);
-    }
+    http.serve_connection_with_upgrades(io, service).await
 }

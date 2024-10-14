@@ -1,16 +1,16 @@
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use clap::Parser;
-use laya::runtime::tokio::TokioServerRuntime;
-use telemetry::install_telemetry;
-use tracing::{info, info_span};
+use laya::runtime::tokio::TokioRuntime;
+use telemetry::install_telemetry_collector;
+use tracing::info;
 
 #[path = "laya-server/telemetry.rs"]
 mod telemetry;
 
 #[derive(clap::ValueEnum, Clone, Default, Debug)]
 pub enum Rt {
-    #[cfg(all(feature = "glommio", target_os = "linux"))]
+    #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
     Glommio,
     #[cfg(feature = "rt-tokio")]
     #[default]
@@ -19,22 +19,21 @@ pub enum Rt {
 
 fn main() {
     let args = Args::parse();
-
-    if let Err(e) = install_telemetry() {
-        eprint!("Failed to install telemetry ({e}). Logging will be unavailable");
-    }
+    let telemetry_rt = install_telemetry_collector();
 
     info!(options = ?args, "begin startup");
 
     match args.runtime {
-        #[cfg(all(feature = "glommio", target_os = "linux"))]
+        #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
         Rt::Glommio => {
             todo!()
         }
 
         #[cfg(feature = "rt-tokio")]
-        Rt::Tokio => laya::start::<TokioServerRuntime>(()),
+        Rt::Tokio => laya::start::<TokioRuntime>(()),
     }
+
+    telemetry_rt.shutdown_timeout(Duration::from_secs(5));
 }
 
 #[derive(Parser, Debug)]

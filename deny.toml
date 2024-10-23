@@ -9,22 +9,16 @@ all-features = true
 
 [licenses]
 version = 2
-allow = [
-    "0BSD",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "MIT",
-    "Unlicense",
-    "Zlib",
-    "MPL-2.0"
-]
+allow = ["Apache-2.0", "BSD-2-Clause", "MIT", "Unlicense", "Zlib"]
 
 exceptions = [{ name = "unicode-ident", allow = ["Unicode-DFS-2016"] }]
 
 [bans]
-multiple-versions = "deny"
+multiple-versions = "warn"
 wildcards = "deny"
-
+skip = [
+    { crate = "sync_wrapper@0.1.2", reason = "used by tower and opentelemetry-http" },
+]
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"

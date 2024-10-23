@@ -58,36 +58,61 @@ incremental = false
 debug = false
 
 [features]
-default = ["rt-tokio"]
+default = ["rt-tokio", "kaduceus"]
+kaduceus = ["dep:kaduceus"]
 rt-tokio = ["dep:tokio"]
 rt-glommio = []
 
 [dependencies]
-clap = { version = "4.5.13", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
+color-eyre = { version = "0.6" }
+config = { version = "0.14", features = ["toml", "json"] }
+kaduceus = { version = "0.1.0", path = "kaduceus", optional = true }
+futures = { version = "0.3" }
+headers-accept = { version = "0.1" }
 http-body = { version = "1" }
 http-body-util = { version = "0.1" }
-hyper = { version = "1.4.1", features = [
-    "server",
-    "http2",
-    "http1",
-] }
+hyper = { version = "1.4.1", features = ["server", "http2", "http1"] }
 hyper-util = { version = "0.1.6", features = [
     "server-auto",
     "server",
+    "service",
     "http2",
     "http1",
     "tokio",
 ] }
+mediatype = { version = "0.19" }
 opentelemetry = { version = "0.26", features = ["trace", "metrics"] }
-opentelemetry_sdk = { version = "0.26", default-features = false, features = ["trace", "rt-tokio"] }
-opentelemetry-stdout = { version = "0.26", features = ["trace", "metrics"] }
-opentelemetry-otlp = { version = "0.26", features = ["metrics"] }
-opentelemetry-appender-tracing = "0.26.0"
-opentelemetry-semantic-conventions = { version = "0.26", features = ["semconv_experimental"] }
-num_cpus = "1.16.0"
-tracing = "0.1.40"
+opentelemetry_sdk = { version = "0.26", default-features = false, features = [
+    "trace",
+    "rt-tokio",
+] }
+opentelemetry-otlp = { version = "0.26", default-features = false, features = [
+    "trace",
+    "http-proto",
+    "reqwest-client",
+] }
+opentelemetry-resource-detectors = { version = "0.5.0" }
+opentelemetry-semantic-conventions = { version = "0.26", features = [
+    "semconv_experimental",
+] }
+num_cpus = { version = "1" }
+once_cell = { version = "1" }
+serde = { version = "1" }
+tracing = { version = "0.1" }
+tracing-error = { version = "0.2" }
 tracing-opentelemetry = { version = "0.27" }
-tracing-subscriber = "0.3.18"
-once_cell = "1.19.0"
-urlencoding = "2.1.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1.40", features = ["full"], optional = true }
+tower = { version = "0.5.1", features = ["tracing", "util"] }
+tower-http = { version = "0.6.1", features = [
+    "cors",
+    "catch-panic",
+    "normalize-path",
+    "sensitive-headers",
+    "request-id",
+    "timeout",
+    "trace",
+    "tracing",
+] }
+urlencoding = { version = "2" }

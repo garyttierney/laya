@@ -50,7 +50,7 @@ impl Runtime for TokioRuntime {
         S::Future: Send + Sync + 'static,
     {
         let rt = tokio::runtime::Builder::new_multi_thread()
-            .thread_name("laya-server")
+            .thread_name("laya")
             .enable_all()
             .build()
             .expect("failed to create HTTP runtime");

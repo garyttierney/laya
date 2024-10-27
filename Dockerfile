@@ -10,12 +10,12 @@ RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update -y && apt-get install -y linux-headers-generic git libc6-dev
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/work/target \
-    rustup install stable && RUSTFLAGS="-C target-feature=+crt-static -C target-cpu=${TARGET_CPU}" cargo build --target ${TARGET} --bin laya-server --release
+    rustup install stable && RUSTFLAGS="-C target-feature=+crt-static -C target-cpu=${TARGET_CPU}" cargo build --target ${TARGET} --bin laya --release
 
 FROM scratch
 ARG TARGET
 ARG TARGET_CPU
 
-COPY --from=builder /build/target/${TARGET}/release/laya-server /bin/laya-server
+COPY --from=builder /build/target/${TARGET}/release/laya /bin/laya
 
-ENTRYPOINT ["/bin/laya-server"]
+ENTRYPOINT ["/bin/laya"]

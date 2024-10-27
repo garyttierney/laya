@@ -30,6 +30,9 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_PAT }}
+          submodules: recursive
       - id: plan_docker
         run: |
           docker_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.docker != false))')
@@ -50,6 +53,9 @@ jobs:
         include: ${{ fromJson(needs.plan.outputs.native-distributions) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_PAT }}
+          submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/setup-cross-toolchain-action@v1
@@ -79,6 +85,9 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_PAT }}
+          submodules: recursive
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

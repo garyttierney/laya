@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt::Display;
 use std::future::Future;
 use std::net::SocketAddr;
 
@@ -8,9 +9,12 @@ use hyper::service::Service;
 use hyper::{Request, Response};
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use tokio::net::{TcpListener, TcpStream};
+use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass};
+use tower_http::trace::ResponseBody;
 use tracing::{info, info_span, Instrument};
 
 use super::{handle_connection, Runtime};
+use crate::{LayaOptions, Options};
 
 pub struct TokioRuntime;
 
@@ -30,38 +34,38 @@ impl Runtime for TokioRuntime {
         TokioTimer::new()
     }
 
-    fn listen<S>(service: S, _: Self::Config)
+    fn bind<S, E>(options: LayaOptions, service: S)
     where
-        S: Service<Request<Incoming>, Response = Response<BoxBody<Bytes, std::io::Error>>>
+        S: Service<
+                Request<Incoming>,
+                Response = Response<
+                    ResponseBody<BoxBody<Bytes, E>, NeverClassifyEos<ServerErrorsFailureClass>>,
+                >,
+            > + Clone
             + Send
             + Sync
-            + Clone
             + 'static,
+        E: Into<Box<dyn Error + Send + Sync>> + Send + Sync + Display + 'static,
+        S::Error: Error + Send + Sync + 'static,
         S::Future: Send + Sync + 'static,
-        S::Error: Into<Box<dyn Error + Send + Sync>>,
     {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .thread_name("laya-server")
             .enable_all()
             .build()
-            .unwrap();
+            .expect("failed to create HTTP runtime");
 
         let error: Result<_, std::io::Error> = rt.block_on(async move {
             let listener_span = info_span!("listener");
-            let addr: SocketAddr = ([127, 0, 0, 1], 43594).into();
-            let listener = TcpListener::bind(addr).await?;
+            let listener = TcpListener::bind(options.bind_address).await?;
 
-            info!("Listening on {addr:?}");
+            info!("Listening on {:?}", options.bind_address);
 
             loop {
                 let (stream, addr) = listener.accept().await?;
                 let io = TokioIo::new(stream);
                 let service = service.clone();
-                let handler = async move {
-                    handle_connection::<TokioRuntime, _>(io, service)
-                        .await
-                        .unwrap()
-                };
+                let handler = handle_connection::<TokioRuntime, _, _>(io, service);
 
                 tokio::spawn(handler.instrument(info_span!("handle", addr = ?addr)));
             }

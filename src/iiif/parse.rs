@@ -3,6 +3,10 @@ use std::fmt::{Display, Formatter};
 use std::num::NonZero;
 use std::str::FromStr;
 
+use tracing::info;
+
+use super::IiifRequest;
+use crate::http::IiifRequestError;
 use crate::iiif::{Dimension, Format, Quality, Region, Rotation, Scale, Size};
 
 const PERCENT_PREFIX: &str = "pct:";
@@ -25,6 +29,64 @@ impl FromStr for Region {
                 }
             }
         }
+    }
+}
+
+impl FromStr for IiifRequest {
+    type Err = IiifRequestError;
+
+    fn from_str(path: &str) -> Result<Self, Self::Err> {
+        let mut segments = path
+            .trim_start_matches('/')
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .peekable();
+
+        let identifier = segments
+            .next()
+            .ok_or(IiifRequestError::UriMissingElement("identifier"))
+            .and_then(|input| {
+                urlencoding::decode(input).map_err(|err| IiifRequestError::UriNotUtf8("identifier"))
+            })?;
+
+        let is_info_request = segments.peek().is_some_and(|s| *s == "info.json");
+        if is_info_request {
+            return Ok(IiifRequest::Info { identifier: identifier.into() });
+        }
+
+        let region = segments
+            .next()
+            .ok_or(IiifRequestError::UriMissingElement("region"))?
+            .parse::<Region>()
+            .map_err(IiifRequestError::from)?;
+
+        let size = segments
+            .next()
+            .ok_or(IiifRequestError::UriMissingElement("size"))?
+            .parse::<Size>()
+            .map_err(IiifRequestError::from)?;
+
+        let rotation = segments
+            .next()
+            .ok_or(IiifRequestError::UriMissingElement("rotation"))?
+            .parse::<Rotation>()
+            .map_err(IiifRequestError::from)?;
+
+        let (quality, format) = segments
+            .next()
+            .ok_or(IiifRequestError::UriMissingElement("quality"))?
+            .split_once('.')
+            .ok_or(IiifRequestError::UriMissingElement("format"))?;
+
+        let quality = quality
+            .parse::<Quality>()
+            .map_err(IiifRequestError::ParseError)?;
+
+        let format = format
+            .parse::<Format>()
+            .map_err(IiifRequestError::ParseError)?;
+
+        Ok(IiifRequest::image(identifier, region, size, rotation, quality, format))
     }
 }
 

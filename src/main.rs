@@ -14,16 +14,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
-use config::{Config, Environment, File, FileFormat};
 use http::IiifImageService;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
 use hyper::service::service_fn;
 use hyper::Request;
 use hyper_util::service::TowerToHyperService;
-use iiif::Format;
-use image::metadata::KaduceusImageReader;
-use image::{ImagePipelineBuilder, LocalImageSourceResolver};
 use kaduceus::KakaduContext;
 use mediatype::{MediaType, MediaTypeBuf};
 use runtime::tokio::TokioRuntime;
@@ -39,6 +35,10 @@ use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{info, info_span, Level};
+
+use crate::iiif::Format;
+use crate::image::metadata::KaduceusImageReader;
+use crate::image::{ImagePipelineBuilder, LocalImageSourceResolver};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
@@ -64,15 +64,14 @@ pub struct Options {
     iiif: IiifImageServiceOptions,
 }
 
-#[tracing::instrument]
-pub fn start<R: Runtime>(options: Options) {
+pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
     let kdu_context = KakaduContext::default();
     let image_pipeline = ImagePipelineBuilder::new()
         .with_locator(LocalImageSourceResolver::new("samples"))
         .with_reader(KaduceusImageReader::new(kdu_context))
         .build();
 
-    let image_service = IiifImageService::new_with_prefix(image_pipeline, &options.iiif.prefix);
+    let image_service = IiifImageService::new_with_prefix(image_pipeline, &options.prefix);
     let svc = ServiceBuilder::new()
         .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))
         .layer(TraceLayer::new_for_http().make_span_with(|req: &Request<Incoming>| {
@@ -88,7 +87,7 @@ pub fn start<R: Runtime>(options: Options) {
         .layer(TimeoutLayer::new(Duration::from_secs(10)))
         .service(image_service);
 
-    R::listen(options, TowerToHyperService::new(svc));
+    R::bind(options, TowerToHyperService::new(svc));
 }
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]
@@ -110,6 +109,10 @@ pub struct LayaOptions {
     #[arg(long, conflicts_with_all(["tokio"]), help_heading("Runtime"))]
     glommio: bool,
 
+    /// Network address the HTTP server is bound to.
+    #[arg(long, short, default_value("127.0.0.1:43594"))]
+    bind_address: SocketAddr,
+
     /// Prefix expected on any image requests.
     #[arg(long, default_value("/"))]
     prefix: String,
@@ -126,7 +129,7 @@ pub struct LayaOptions {
     tokio_options: TokioRuntimeOptions,
 
     #[command(flatten)]
-    image_decoder_options: ImageDecoderOptions
+    image_decoder_options: ImageDecoderOptions,
 }
 
 #[derive(clap::Args, Clone, Debug)]
@@ -137,12 +140,14 @@ pub struct ImageDecoderOptions {
 
 #[derive(clap::Args, Clone, Debug)]
 pub struct KakaduOptions {
-    /// The number of threads used to run image decoding operations. Defaults to the number of available cores.
+    /// The number of threads used to run image decoding operations. Defaults to the number of
+    /// available cores.
     #[arg(long("kakadu-decoder-threads"), help_heading("Kakadu"))]
     decoder_threads: Option<usize>,
 
     /// The amount of memory allocated to Kakadu in bytes.
-    /// NOTE: failure to assign an upper bound on memory allocations may result in Kakadu panicking during an image decode request.
+    /// NOTE: failure to assign an upper bound on memory allocations may result in Kakadu panicking
+    /// during an image decode request.
     #[arg(long("kakadu-memory-limit"), help_heading("Kakadu"))]
     memory_limit: Option<usize>,
 }
@@ -150,14 +155,23 @@ pub struct KakaduOptions {
 #[derive(clap::Args, Clone, Debug)]
 pub struct TokioRuntimeOptions {
     /// How many threads should be allocated to HTTP listener sockets?
-    #[arg(long("tokio-listener-threads"), requires("tokio"), help_heading("Tokio"), default_value("1"))]
+    #[arg(
+        long("tokio-listener-threads"),
+        requires("tokio"),
+        help_heading("Tokio"),
+        default_value("1")
+    )]
     listener_threads: usize,
 
     /// How many threads should be allocated to file and network IO?
-    #[arg(long("tokio-io-threads"), requires("tokio"), help_heading("Tokio"), default_value("1"))]
+    #[arg(
+        long("tokio-io-threads"),
+        requires("tokio"),
+        help_heading("Tokio"),
+        default_value("1")
+    )]
     io_threads: usize,
 }
-
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -165,11 +179,7 @@ fn main() -> color_eyre::Result<()> {
     let telemetry_rt = telemetry::install_telemetry_collector();
     let options = LayaOptions::parse();
 
-    let rt = if options.tokio {
-        Rt::Tokio
-    } else {
-        Rt::Tokio
-    };
+    let rt = if options.tokio { Rt::Tokio } else { Rt::Tokio };
 
     info_span!("main", runtime = ?rt, options = ?options).in_scope(|| {
         match rt {
@@ -179,7 +189,7 @@ fn main() -> color_eyre::Result<()> {
             }
 
             #[cfg(feature = "rt-tokio")]
-            Rt::Tokio => start::<TokioRuntime>(todo!()),
+            Rt::Tokio => start(TokioRuntime,  options),
         }
 
         telemetry_rt.shutdown(Duration::from_secs(5));

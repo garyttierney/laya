@@ -1,53 +1,45 @@
-mod image;
-mod info;
+pub mod image;
+pub mod info;
 pub(crate) mod parse;
 
 use std::num::NonZero;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct ImageRequest {
-    identifier: String,
-    region: Region,
-    size: Size,
-    rotation: Rotation,
-    quality: Quality,
-    format: Format,
+#[derive(Debug, PartialEq)]
+pub enum IiifRequest {
+    Info {
+        identifier: String,
+    },
+    Image {
+        identifier: String,
+        region: Region,
+        size: Size,
+        rotation: Rotation,
+        quality: Quality,
+        format: Format,
+    },
 }
 
-impl ImageRequest {
-    pub fn new<S: Into<String>>(
+impl IiifRequest {
+    pub fn info<S: Into<String>>(identifier: S) -> Self {
+        IiifRequest::Info { identifier: identifier.into() }
+    }
+
+    pub fn image<S: Into<String>>(
         identifier: S,
         region: Region,
         size: Size,
         rotation: Rotation,
         quality: Quality,
         format: Format,
-    ) -> ImageRequest {
-        ImageRequest { identifier: identifier.into(), region, size, rotation, quality, format }
-    }
-
-    pub fn identifier(&self) -> &str {
-        &self.identifier
-    }
-
-    pub fn region(&self) -> &Region {
-        &self.region
-    }
-
-    pub fn size(&self) -> Size {
-        self.size
-    }
-
-    pub fn rotation(&self) -> Rotation {
-        self.rotation
-    }
-
-    pub fn quality(&self) -> Quality {
-        self.quality
-    }
-
-    pub fn format(&self) -> Format {
-        self.format
+    ) -> IiifRequest {
+        IiifRequest::Image {
+            identifier: identifier.into(),
+            region,
+            size,
+            rotation,
+            quality,
+            format,
+        }
     }
 }
 
@@ -161,5 +153,53 @@ impl Format {
             Format::Pdf => "application/pdf",
             Format::Webp => "image/webp",
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::iiif::Scale;
+
+    #[test]
+    fn decode_basic_info_request() {
+        let request = "/abcd1234/info.json".parse();
+
+        assert_eq!(request, Ok(IiifRequest::info("abcd1234")));
+    }
+
+    #[test]
+    fn decode_basic_image_request() {
+        let request = "/abcd1234/full/max/0/default.jpg".parse();
+
+        assert_eq!(
+            request,
+            Ok(IiifRequest::image(
+                "abcd1234",
+                Region::Full,
+                Size::new(Scale::Max),
+                Rotation::new(0.0),
+                Quality::Default,
+                Format::Jpg,
+            ))
+        );
+    }
+
+    #[test]
+    fn decode_encoded_image_request() {
+        // Image API 3.0, s 9: to-encode = "/" / "?" / "#" / "[" / "]" / "@" / "%"
+        let request = "/a%2F%3F%23%5B%5D%40%25z/full/max/0/default.jpg".parse();
+
+        assert_eq!(
+            request,
+            Ok(IiifRequest::image(
+                "a/?#[]@%z",
+                Region::Full,
+                Size::new(Scale::Max),
+                Rotation::new(0.0),
+                Quality::Default,
+                Format::Jpg,
+            ))
+        );
     }
 }

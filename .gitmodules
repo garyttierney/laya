@@ -1,0 +1,3 @@
+[submodule "kaduceus"]
+	path = kaduceus
+	url = https://github.com/digirati-co-uk/kaduceus.git

@@ -1,4 +1,5 @@
 *
+!kaduceus
 !src
 !Cargo.*
 !.cargo/config.toml

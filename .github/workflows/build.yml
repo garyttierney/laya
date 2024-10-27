@@ -88,6 +88,7 @@ jobs:
         with:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
+          persist-credentials: true
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}
@@ -128,6 +129,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
+          context: .
           platforms: ${{ matrix.docker }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
@@ -142,6 +144,7 @@ jobs:
         uses: docker/build-push-action@v6
         id: build_platform_specific
         with:
+          context: .
           platforms: ${{ matrix.docker }}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}

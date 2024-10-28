@@ -23,7 +23,7 @@ concurrency:
 jobs:
   plan:
     name: "Create build plan"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       docker-distributions: ${{ steps.plan_docker.outputs.docker_distributions }}
       native-distributions: ${{ steps.plan.outputs.native_distributions }}
@@ -46,7 +46,7 @@ jobs:
   build-native:
     needs: plan
     name: "${{ matrix.name }} (Native)"
-    runs-on: "${{ matrix.runner || 'ubuntu-latest' }}"
+    runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
     strategy:
       fail-fast: false
       matrix:
@@ -73,7 +73,7 @@ jobs:
   build-containers:
     needs: plan
     name: "${{ matrix.name }} (Docker)"
-    runs-on: "${{ matrix.runner || 'ubuntu-latest' }}"
+    runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
     strategy:
       fail-fast: false
       matrix:
@@ -180,7 +180,7 @@ jobs:
         if: matrix.generic == true
   merge-container-manifests:
     name: Merge Docker manifests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build-containers
     steps:

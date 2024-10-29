@@ -3,3 +3,8 @@
 !src
 !Cargo.*
 !.cargo/config.toml
+*.o
+*.dll
+*.so
+*.exe
+*.lib

@@ -1,5 +1,5 @@
 [build]
-rustflags = ["-Clinker=clang", "-Clink-arg=-fuse-ld=lld", "-Ctarget-feature=+crt-static"]
+rustflags = ["-Clinker=clang", "-Clink-arg=-fuse-ld=lld"]
 
 [env]
 CC = "clang"

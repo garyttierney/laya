@@ -1,5 +1,5 @@
 [build]
-rustflags = ["--cfg", "hyper_unstable_tracing", "--cfg", "tokio_unstable"]
+rustflags = ["-Clinker=clang", "-Clink-arg=-fuse-ld=lld", "-Ctarget-feature=+crt-static"]
 
 [env]
 CC = "clang"

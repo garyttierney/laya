@@ -15,16 +15,14 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     RUST_VERSION=1.82.0
 
 
-COPY . /work
-COPY share/rustc.wrap /work/rustc.wrap
-
 WORKDIR /work
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/rustup \
+    --mount=type=bind,target=/work,rw \
     curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain "${RUST_VERSION}" && \
     rustup install stable && \
     rustup target add ${TARGET} && \
-    TARGET_CPU=${TARGET_CPU} RUSTC=/work/rustc.wrap cargo build --target ${TARGET} --bin laya --release && \
+    TARGET_CPU=${TARGET_CPU} RUSTC=/work/rustc.wrap cargo build --offline --target ${TARGET} --bin laya --release && \
     mkdir /out/ && mv /work/target/${TARGET}/release/laya /out/ && rm -Rf /work
 
 FROM scratch

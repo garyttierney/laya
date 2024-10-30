@@ -100,6 +100,10 @@ jobs:
       - uses: de-vri-es/setup-git-credentials@v2
         with:
           credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          cargo fetch
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

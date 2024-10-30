@@ -67,9 +67,8 @@ jobs:
           cargo build --target ${{ matrix.triple }} --release --bin laya
           cp target/${{ matrix.triple }}/release/laya artifacts/laya-${{ matrix.name }}
         env:
-          RUSTFLAGS: "-C target-feature=+crt-static -C target-cpu=${{ matrix.cpu }} -Clinker=clang -Clink-arg=-fuse-ld=lld"
-          CXX: clang++
-          CC: clang
+          TARGET_CPU: ${{ matrix.cpu }}
+          RUSTC: share/rustc.wrap
 
   build-containers:
     needs: plan

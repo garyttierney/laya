@@ -3,6 +3,7 @@
 !src
 !Cargo.*
 !.cargo/config.toml
+!share
 *.o
 *.dll
 *.so

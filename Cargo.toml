@@ -55,7 +55,8 @@ lto = "fat"
 opt-level = 3
 codegen-units = 1
 incremental = false
-debug = false
+debug = "full"
+split-debuginfo = "packed"
 
 [features]
 default = ["rt-tokio", "kaduceus"]

@@ -1,6 +1,0 @@
-[build]
-rustflags = ["-Clinker=clang", "-Clink-arg=-fuse-ld=lld"]
-
-[env]
-CC = "clang"
-CXX = "clang++"

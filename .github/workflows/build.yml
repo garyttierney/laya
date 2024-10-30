@@ -39,6 +39,8 @@ jobs:
           TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
+          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "git@github.com:"
+          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "ssh://git@github.com/"
       - id: plan_docker
         run: |
           docker_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.docker != false))')
@@ -68,6 +70,8 @@ jobs:
           TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
+          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "git@github.com:"
+          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "ssh://git@github.com/"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/setup-cross-toolchain-action@v1
@@ -106,6 +110,8 @@ jobs:
           TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
+          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "git@github.com:"
+          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "ssh://git@github.com/"
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

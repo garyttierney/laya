@@ -103,7 +103,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: |
-          cargo fetch
+          cargo fetch --target ${{ matrix.triple }} --locked
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

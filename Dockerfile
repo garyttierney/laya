@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain "${RUST_VERSION}" && \
     rustup install stable && \
     rustup target add ${TARGET} && \
-    TARGET_CPU=${TARGET_CPU} RUSTC=/work/share/rustc.wrap cargo build --offline --target ${TARGET} --bin laya --release && \
+    TARGET_CPU=${TARGET_CPU} RUSTC=/work/share/rustc.wrap cargo build --locked --offline --target ${TARGET} --bin laya --release && \
     mkdir /out/ && mv /work/target/${TARGET}/release/laya /out/ && rm -Rf /work
 
 FROM scratch

@@ -16,13 +16,9 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
-      - name: Configure git for private modules
-        env:
-          TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+      - uses: de-vri-es/setup-git-credentials@v2
+        with:
+          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build
@@ -41,13 +37,9 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
-      - name: Configure git for private modules
-        env:
-          TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+      - uses: de-vri-es/setup-git-credentials@v2
+        with:
+          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
       - uses: EmbarkStudios/cargo-deny-action@v1
 
   clippy:
@@ -59,13 +51,9 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
-      - name: Configure git for private modules
-        env:
-          TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+      - uses: de-vri-es/setup-git-credentials@v2
+        with:
+          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -80,13 +68,9 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
-      - name: Configure git for private modules
-        env:
-          TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          git config --global url."https://garyttierney:${TOKEN}@github.com".insteadOf "https://github.com"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://garyttierney:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+      - uses: de-vri-es/setup-git-credentials@v2
+        with:
+          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt

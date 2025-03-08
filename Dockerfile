@@ -12,11 +12,11 @@ RUN --mount=type=cache,target=/var/cache/dnf dnf install -y git clang binutils  
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.82.0
+    RUST_VERSION=1.85.0
 
 
 WORKDIR /work
-RUN --mount=type=bind,target=/usr/local/cargo,from=~/.cargo \
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/rustup \
     --mount=type=bind,target=/work,rw \
     curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain "${RUST_VERSION}" && \

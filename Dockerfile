@@ -16,7 +16,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 
 
 WORKDIR /work
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
+RUN --mount=type=bind,target=/usr/local/cargo,from=~/.cargo \
     --mount=type=cache,target=/usr/local/rustup \
     --mount=type=bind,target=/work,rw \
     curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain "${RUST_VERSION}" && \

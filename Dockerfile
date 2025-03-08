@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     rustup install stable && \
     rustup target add ${TARGET} && \
     TARGET_CPU=${TARGET_CPU} RUSTC=/work/share/rustc.wrap cargo build --locked --offline --target ${TARGET} --bin laya --release && \
-    mkdir /out/ && mv /work/target/${TARGET}/release/laya /out/ && rm -Rf /work
+    mkdir /out/ && mv /work/target/${TARGET}/release/laya /out/
 
 FROM scratch
 ARG TARGET

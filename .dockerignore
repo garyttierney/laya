@@ -4,6 +4,7 @@
 !Cargo.*
 !.cargo/config.toml
 !share
+!vendor
 *.o
 *.dll
 *.so

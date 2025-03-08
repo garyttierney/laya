@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: 167865917244.dkr.ecr.eu-west-1.amazonaws.com
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: dlcsspinup-laya
   CARGO_INCREMENTAL: 0
   CARGO_NET_GIT_FETCH_WITH_CLI: true
   CARGO_NET_RETRY: 10
@@ -35,7 +35,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
 

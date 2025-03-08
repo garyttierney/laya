@@ -81,9 +81,6 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
-      - uses: de-vri-es/setup-git-credentials@v2
-        with:
-          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/setup-cross-toolchain-action@v1
@@ -119,13 +116,10 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
-      - uses: de-vri-es/setup-git-credentials@v2
-        with:
-          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: |
-          cargo fetch --target ${{ matrix.triple }} --locked
+          cargo vendor --target ${{ matrix.triple }} --locked >> .cargo/config.toml
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

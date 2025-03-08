@@ -30,6 +30,8 @@ jobs:
       native-distributions: ${{ steps.plan.outputs.native_distributions }}
       version: ${{ steps.version.outputs.version }}
       cargo-token: ${{ steps.cargo_token.outputs.token }}
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:

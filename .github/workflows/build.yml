@@ -29,7 +29,7 @@ jobs:
       docker-distributions: ${{ steps.plan_docker.outputs.docker_distributions }}
       native-distributions: ${{ steps.plan.outputs.native_distributions }}
       version: ${{ steps.version.outputs.version }}
-      cargo-token: ${{ steps.cargo_token.outputs.token }}
+      cargo_token: ${{ steps.cargo_token.outputs.token }}
     permissions:
       id-token: write
     steps:
@@ -61,14 +61,15 @@ jobs:
       - id: cargo_token
         run: |
           token=$(aws codeartifact get-authorization-token --domain dlcs-spinup --domain-owner 167865917244 --region eu-west-1 --query authorizationToken --output text)
-          echo "token=$token"
+          echo "::add-mask::$token"
+          echo "token=$token" >> $GITHUB_OUTPUT
 
   build-native:
     needs: plan
     name: "${{ matrix.name }} (Native)"
     runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
     env:
-      CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo-token }}
+      CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo_token }}
     strategy:
       fail-fast: false
       matrix:
@@ -101,7 +102,7 @@ jobs:
     name: "${{ matrix.name }} (Docker)"
     runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
     env:
-      CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo-token }}
+      CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo_token }}
     strategy:
       fail-fast: false
       matrix:

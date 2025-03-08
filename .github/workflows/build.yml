@@ -15,6 +15,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   RUSTUP_MAX_RETRIES: 10
+  CARGO_REGISTRIES_DLCS_INDEX: "sparse+https://dlcs-spinup-167865917244.d.codeartifact.eu-west-1.amazonaws.com/cargo/private/"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -28,12 +29,20 @@ jobs:
       docker-distributions: ${{ steps.plan_docker.outputs.docker_distributions }}
       native-distributions: ${{ steps.plan.outputs.native_distributions }}
       version: ${{ steps.version.outputs.version }}
+      cargo-token: ${{ steps.cargo_token.outputs.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
+        with:
+          role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_retags
+          aws-region: eu-west-1
+
       - uses: de-vri-es/setup-git-credentials@v2
         with:
           credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
@@ -47,10 +56,17 @@ jobs:
           echo "native_distributions=$native_distributions" >> "$GITHUB_OUTPUT"
       - id: version
         run: echo "version=$(cargo pkgid | cut -d '@' -f2)" >> $GITHUB_OUTPUT
+      - id: cargo_token
+        run: |
+          token=$(aws codeartifact get-authorization-token --domain dlcs-spinup --domain-owner 167865917244 --region eu-west-1 --query authorizationToken --output text)
+          echo "token=$token"
+
   build-native:
     needs: plan
     name: "${{ matrix.name }} (Native)"
     runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
+    env:
+      CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo-token }}
     strategy:
       fail-fast: false
       matrix:
@@ -82,6 +98,8 @@ jobs:
     needs: plan
     name: "${{ matrix.name }} (Docker)"
     runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
+    env:
+      CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo-token }}
     strategy:
       fail-fast: false
       matrix:

@@ -1,2 +1,5 @@
 [net]
 git-fetch-with-cli = true
+
+[registries]
+dlcs = { index = "sparse+https://dlcs-spinup-167865917244.d.codeartifact.eu-west-1.amazonaws.com/cargo/private/", credential-provider = "cargo:token-from-stdout aws codeartifact get-authorization-token --domain dlcs-spinup --domain-owner 167865917244 --region eu-west-1 --query authorizationToken --output text" }

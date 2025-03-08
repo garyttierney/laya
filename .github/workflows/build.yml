@@ -45,24 +45,25 @@ jobs:
           role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_retags
           aws-region: eu-west-1
 
-      - uses: de-vri-es/setup-git-credentials@v2
-        with:
-          credentials: https://garyttierney:${{secrets.REPO_PAT}}@github.com
+      - id: cargo_token
+        run: |
+          token=$(aws codeartifact get-authorization-token --domain dlcs-spinup --domain-owner 167865917244 --region eu-west-1 --query authorizationToken --output text)
+          echo "token=$token" >> $GITHUB_OUTPUT
+
       - id: plan_docker
+        env:
+          CARGO_REGISTRIES_DLCS_TOKEN: ${{ steps.cargo_token.outputs.token }}
         run: |
           docker_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.docker != false))')
           echo "docker_distributions=$docker_distributions" >> "$GITHUB_OUTPUT"
       - id: plan
+        env:
+          CARGO_REGISTRIES_DLCS_TOKEN: ${{ steps.cargo_token.outputs.token }}
         run: |
           native_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.generic == true))')
           echo "native_distributions=$native_distributions" >> "$GITHUB_OUTPUT"
       - id: version
         run: echo "version=$(cargo pkgid | cut -d '@' -f2)" >> $GITHUB_OUTPUT
-      - id: cargo_token
-        run: |
-          token=$(aws codeartifact get-authorization-token --domain dlcs-spinup --domain-owner 167865917244 --region eu-west-1 --query authorizationToken --output text)
-          echo "::add-mask::$token"
-          echo "token=$token" >> $GITHUB_OUTPUT
 
   build-native:
     needs: plan

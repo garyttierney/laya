@@ -16,7 +16,7 @@ env:
   RUST_BACKTRACE: 1
   RUSTUP_MAX_RETRIES: 10
   CARGO_REGISTRIES_DLCS_INDEX: "sparse+https://dlcs-spinup-167865917244.d.codeartifact.eu-west-1.amazonaws.com/cargo/private/"
-
+  CARGO_REGISTRIES_DLCS_CREDENTIAL_PROVIDER: "cargo:token"
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

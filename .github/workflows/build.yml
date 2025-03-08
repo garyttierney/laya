@@ -119,7 +119,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: |
-          cargo vendor --target ${{ matrix.triple }} --locked >> .cargo/config.toml
+          cargo vendor --locked >> .cargo/config.toml
       - name: Prepare
         run: |
           platform=${{ matrix.docker }}

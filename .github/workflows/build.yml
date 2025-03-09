@@ -214,6 +214,8 @@ jobs:
   merge-container-manifests:
     name: Merge Docker manifests
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write    
     needs:
       - build-containers
     steps:

@@ -66,8 +66,7 @@ pub fn install_telemetry_collector() -> Telemetry {
         .with_sampler(Sampler::AlwaysOn)
         .with_id_generator(XrayIdGenerator::default())
         .with_resource(resource())
-        .with_batch_exporter(exporter)
-        .build();
+        .with_span_processor(opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(exporter, runtime::Tokio).build())        .build();
 
     let tracer = provider.tracer("tracing-otel");
 

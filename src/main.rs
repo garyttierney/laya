@@ -15,14 +15,16 @@ use std::time::Duration;
 
 use clap::Parser;
 use http::IiifImageService;
+use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
 use hyper::service::service_fn;
-use hyper::Request;
+use hyper::{Request, Response};
 use hyper_util::service::TowerToHyperService;
 use kaduceus::KakaduContext;
 use mediatype::{MediaType, MediaTypeBuf};
 use opentelemetry::trace::FutureExt;
+use opentelemetry_sdk::trace::Span;
 use runtime::tokio::TokioRuntime;
 use runtime::Runtime;
 use serde::{Deserialize, Serialize};
@@ -36,6 +38,7 @@ use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{info, info_span, Level};
+use tracing_opentelemetry_instrumentation_sdk::http::http_server::{make_span_from_request, update_span_from_response};
 
 use crate::iiif::Format;
 use crate::image::metadata::KaduceusImageReader;
@@ -71,21 +74,19 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
         .with_locator(LocalImageSourceResolver::new("samples"))
         .with_reader(KaduceusImageReader::new(kdu_context))
         .build();
-
     let image_service = IiifImageService::new_with_prefix(image_pipeline, &options.prefix);
+
+    fn on_response<B>(response: &Response<B>, latency: Duration, span: &tracing::Span) {}
+
     let svc = ServiceBuilder::new()
         .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))
-        .layer(TraceLayer::new_for_http().make_span_with(|req: &Request<Incoming>| {
-            info_span!(
-                parent: None,
-                "request",
-                "http.version" = ?req.version(),
-                "http.headers" = ?req.headers(),
-                "http.request.method" = ?req.method(),
-                "url.path" = ?req.uri().path(),
-                "url.full" = ?req.uri()
-            )
-        }))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|req: &Request<Incoming>| make_span_from_request(&req))
+                .on_response(|response: &Response<_>, latency: Duration, span: &tracing::Span| {
+                    update_span_from_response(span, response)
+                })
+        )
         .layer(TimeoutLayer::new(Duration::from_secs(10)))
         .service(image_service);
 

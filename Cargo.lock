@@ -1389,6 +1389,7 @@ dependencies = [
  "tracing",
  "tracing-error",
  "tracing-opentelemetry",
+ "tracing-opentelemetry-instrumentation-sdk",
  "tracing-subscriber",
  "urlencoding",
 ]
@@ -2855,6 +2856,18 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "web-time",
+]
+
+[[package]]
+name = "tracing-opentelemetry-instrumentation-sdk"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cae2c7a01582abc7b0a4672f92c47411b69cd3967b8b79bb743d5d0991c9089"
+dependencies = [
+ "http",
+ "opentelemetry 0.28.0",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]

@@ -19,8 +19,6 @@ use crate::iiif::parse::ParseError as ImageRequestParseError;
 use crate::iiif::{Format, IiifRequest, Quality, Region, Rotation, Size};
 use crate::image::{ImageMetadataResolver, ImagePipeline, ImageSourceResolver};
 
-const PREFIX: &str = "/"; // TODO: read this from config
-
 pub struct IiifImageService<L: ImageSourceResolver, R: ImageMetadataResolver> {
     options: Arc<IiifImageServiceOptions>,
     pipeline: Arc<ImagePipeline<L, R>>,
@@ -77,12 +75,19 @@ pub async fn dispatch_request(
     req: Request<Incoming>,
     options: Arc<IiifImageServiceOptions>,
 ) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
-    let request = decode_request(req, &options);
+    match req.uri().path() {
+        "/" => Response::builder()
+            .status(StatusCode::OK)
+            .body(Full::new("OK!".into()).map_err(|e| unreachable!()).boxed()),
+        _ => {
+            let request = decode_request(req, &options);
 
-    match request {
-        Ok(IiifRequest::Image { .. }) => todo!(),
-        Ok(IiifRequest::Info { identifier }) => info_request(&identifier),
-        Err(e) => bad_request(e.to_string()),
+            match request {
+                Ok(IiifRequest::Image { .. }) => todo!(),
+                Ok(IiifRequest::Info { identifier }) => info_request(&identifier),
+                Err(e) => bad_request(e.to_string()),
+            }
+        }
     }
 }
 

@@ -77,9 +77,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
+          repository: digirati-co-uk/kakadu
+          path: kakadu
+
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/setup-cross-toolchain-action@v1
@@ -112,9 +118,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.REPO_PAT }}
           submodules: recursive
           persist-credentials: true
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
+          repository: digirati-co-uk/kakadu
+          path: kakadu
+          
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: |

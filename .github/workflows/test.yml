@@ -21,6 +21,13 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: true
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
+          repository: digirati-co-uk/kakadu
+          path: kakadu
+          
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
         with:
@@ -45,12 +52,13 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: true
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
         with:
           role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_retags
           aws-region: eu-west-1          
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: EmbarkStudios/cargo-deny-action@v2
 
   clippy:
     name: Clippy
@@ -62,6 +70,13 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: true
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
+          repository: digirati-co-uk/kakadu
+          path: kakadu
+          
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
         with:
@@ -82,6 +97,13 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: true
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
+          repository: digirati-co-uk/kakadu
+          path: kakadu
+          
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
         with:

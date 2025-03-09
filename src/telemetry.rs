@@ -3,12 +3,15 @@ use std::time::Duration;
 use opentelemetry::global::{self, set_tracer_provider};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
+use opentelemetry_aws::trace::XrayIdGenerator;
 use opentelemetry_resource_detectors::{
     HostResourceDetector, OsResourceDetector, ProcessResourceDetector,
 };
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::resource::ResourceDetector;
-use opentelemetry_sdk::trace::{BatchConfig, RandomIdGenerator, Sampler, Tracer};
+use opentelemetry_sdk::trace::{
+    BatchConfig, RandomIdGenerator, Sampler, SdkTracerProvider, Tracer,
+};
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_semantic_conventions::resource::{SERVICE_NAME, SERVICE_VERSION};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
@@ -21,24 +24,20 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
 fn resource() -> Resource {
-    let detection_timeout = Duration::from_millis(100);
-    let os = OsResourceDetector.detect(detection_timeout.clone());
-    let process = ProcessResourceDetector.detect(detection_timeout.clone());
-    let host = HostResourceDetector::default().detect(detection_timeout.clone());
-    let server = Resource::from_schema_url(
-        [
-            KeyValue::new(SERVICE_NAME, env!("CARGO_PKG_NAME")),
-            KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")),
-        ],
-        SCHEMA_URL,
-    );
-
-    server.merge(&os).merge(&process).merge(&host)
+    Resource::builder()
+        .with_schema_url(
+            [
+                KeyValue::new(SERVICE_NAME, env!("CARGO_PKG_NAME")),
+                KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")),
+            ],
+            SCHEMA_URL,
+        )
+        .build()
 }
 
 pub struct Telemetry {
     rt: Runtime,
-    tracing_provider: opentelemetry_sdk::trace::TracerProvider,
+    tracing_provider: opentelemetry_sdk::trace::SdkTracerProvider,
 }
 
 impl Telemetry {
@@ -58,18 +57,17 @@ pub fn install_telemetry_collector() -> Telemetry {
     let _rt = rt.enter();
     global::set_text_map_propagator(TraceContextPropagator::new());
     // let console_layer = console_subscriber::spawn();
-    let provider = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_trace_config(
-            opentelemetry_sdk::trace::Config::default()
-                .with_sampler(Sampler::AlwaysOn)
-                .with_id_generator(RandomIdGenerator::default())
-                .with_resource(resource()),
-        )
-        .with_batch_config(BatchConfig::default())
-        .with_exporter(opentelemetry_otlp::new_exporter().http())
-        .install_batch(runtime::Tokio)
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_http()
+        .build()
         .unwrap();
+
+    let provider = SdkTracerProvider::builder()
+        .with_sampler(Sampler::AlwaysOn)
+        .with_id_generator(XrayIdGenerator::default())
+        .with_resource(resource())
+        .with_batch_exporter(exporter)
+        .build();
 
     let tracer = provider.tracer("tracing-otel");
 

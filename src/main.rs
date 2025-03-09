@@ -22,6 +22,7 @@ use hyper::Request;
 use hyper_util::service::TowerToHyperService;
 use kaduceus::KakaduContext;
 use mediatype::{MediaType, MediaTypeBuf};
+use opentelemetry::trace::FutureExt;
 use runtime::tokio::TokioRuntime;
 use runtime::Runtime;
 use serde::{Deserialize, Serialize};
@@ -78,10 +79,11 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
             info_span!(
                 parent: None,
                 "request",
-                method = req.method().as_str(),
-                path = req.uri().path(),
-                version = ?req.version(),
-                headers = ?req.headers()
+                "http.version" = ?req.version(),
+                "http.headers" = ?req.headers(),
+                "http.request.method" = ?req.method(),
+                "url.path" = ?req.uri().path(),
+                "url.full" = ?req.uri()
             )
         }))
         .layer(TimeoutLayer::new(Duration::from_secs(10)))
@@ -179,7 +181,7 @@ fn main() -> color_eyre::Result<()> {
     let telemetry_rt = telemetry::install_telemetry_collector();
     let options = LayaOptions::parse();
 
-    let rt = if options.tokio { Rt::Tokio } else { Rt::Tokio };
+    let rt = Rt::Tokio;
 
     info_span!("main", runtime = ?rt, options = ?options).in_scope(|| {
         match rt {
@@ -189,7 +191,7 @@ fn main() -> color_eyre::Result<()> {
             }
 
             #[cfg(feature = "rt-tokio")]
-            Rt::Tokio => start(TokioRuntime,  options),
+            Rt::Tokio => start(TokioRuntime, options),
         }
 
         telemetry_rt.shutdown(Duration::from_secs(5));

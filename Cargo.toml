@@ -121,4 +121,4 @@ tower-http = { version = "0.6.1", features = [
 ] }
 urlencoding = { version = "2" }
 opentelemetry-aws = "0.16.0"
-tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = ["http"] }
+tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = ["http", "tracing_level_info"] }

@@ -1345,6 +1345,8 @@ dependencies = [
 [[package]]
 name = "kaduceus"
 version = "0.1.0"
+source = "sparse+https://dlcs-spinup-167865917244.d.codeartifact.eu-west-1.amazonaws.com/cargo/private/"
+checksum = "de3ac465b78620fecfd3711ca3113080ced2b440600ffcd16a0f9cd8a21fe8f0"
 dependencies = [
  "cxx",
  "cxx-build",

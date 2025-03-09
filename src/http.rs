@@ -98,7 +98,7 @@ fn decode_request(
 ) -> Result<IiifRequest, IiifRequestError> {
     req.uri()
         .path()
-        .trim_start_matches(&options.prefix.trim_end_matches("/"))
+        .trim_start_matches(options.prefix.trim_end_matches("/"))
         .parse::<IiifRequest>()
 }
 

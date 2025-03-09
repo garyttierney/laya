@@ -1,5 +1,6 @@
 use super::{ImageMetadataResolver, ImageSourceResolver};
 
+#[derive(Default)]
 pub struct ImagePipelineBuilder<S: ImageSourceResolver, R: ImageMetadataResolver> {
     locator: Option<S>,
     reader: Option<R>,

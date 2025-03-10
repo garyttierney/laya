@@ -82,6 +82,7 @@ opentelemetry_sdk = { version = "0.28", default-features = false, features = [
     "trace",
     "rt-tokio",
     "experimental_trace_batch_span_processor_with_async_runtime",
+    "experimental_logs_batch_log_processor_with_async_runtime"
 ] }
 opentelemetry-otlp = { version = "0.28", default-features = false, features = [
     "trace",

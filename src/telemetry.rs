@@ -10,7 +10,7 @@ use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter};
 use opentelemetry_resource_detectors::{
     HostResourceDetector, OsResourceDetector, ProcessResourceDetector,
 };
-use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::logs::{BatchConfig, SdkLoggerProvider};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::resource::{EnvResourceDetector, ResourceDetector};
 use opentelemetry_sdk::trace::{
@@ -83,7 +83,13 @@ pub fn install_telemetry_collector() -> Telemetry {
 
     let logger_provider = SdkLoggerProvider::builder()
         .with_resource(resource())
-        .with_batch_exporter(log_exporter)
+        .with_log_processor(
+            opentelemetry_sdk::logs::log_processor_with_async_runtime::BatchLogProcessor::builder(
+                log_exporter,
+                runtime::Tokio,
+            )
+            .build(),
+        )
         .build();
 
     let tracer = tracer_provider.tracer("tracing-otel");

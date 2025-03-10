@@ -107,13 +107,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.name }}
+          shared-key: rust-dependencies
           cache-on-failure: true
-          cache-directories: |
-            vendor
-      - uses: taiki-e/setup-cross-toolchain-action@v1
-        with:
-          target: ${{ matrix.triple }}
+          cache-targets: false
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.8
 
       - name: Build
         run: |
@@ -123,6 +122,8 @@ jobs:
         env:
           TARGET_CPU: ${{ matrix.cpu }}
           RUSTFLAGS: "-Ctarget-cpu=${{ matrix.cpu }} -Ctarget-feature=+crt-static"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: true
 
       - name: Create OCI container
         id: build

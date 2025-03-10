@@ -207,19 +207,17 @@ fn main() -> color_eyre::Result<()> {
 
     let rt = Rt::Tokio;
 
-    info_span!("main", runtime = ?rt, options = ?options).in_scope(|| {
-        match rt {
-            #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
-            Rt::Glommio => {
-                todo!()
-            }
-
-            #[cfg(feature = "rt-tokio")]
-            Rt::Tokio => start::<TokioRuntime>(options),
+    match rt {
+        #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
+        Rt::Glommio => {
+            todo!()
         }
 
-        telemetry.shutdown(Duration::from_secs(5));
+        #[cfg(feature = "rt-tokio")]
+        Rt::Tokio => start::<TokioRuntime>(options),
+    }
 
-        Ok(())
-    })
+    telemetry.shutdown(Duration::from_secs(5));
+
+    Ok(())
 }

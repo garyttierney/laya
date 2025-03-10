@@ -55,18 +55,17 @@ impl Runtime for TokioRuntime {
             .expect("failed to create HTTP runtime");
 
         let _error: Result<_, std::io::Error> = rt.block_on(async move {
-            let _listener_span = info_span!("listener");
             let listener = TcpListener::bind(options.bind_address).await?;
 
             info!("Listening on {:?}", options.bind_address);
 
             loop {
-                let (stream, addr) = listener.accept().await?;
+                let (stream, _addr) = listener.accept().await?;
                 let io = TokioIo::new(stream);
                 let service = service.clone();
                 let handler = handle_connection::<TokioRuntime, _, _>(io, service);
 
-                tokio::spawn(handler.instrument(info_span!("handle", addr = ?addr)));
+                tokio::spawn(handler);
             }
 
             Ok(())

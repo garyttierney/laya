@@ -1,10 +1,16 @@
+use std::env;
+use std::time::Duration;
+
 use opentelemetry::global::{self, set_tracer_provider};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
+use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_aws::trace::XrayIdGenerator;
+use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter};
 use opentelemetry_resource_detectors::{
     HostResourceDetector, OsResourceDetector, ProcessResourceDetector,
 };
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::resource::{EnvResourceDetector, ResourceDetector};
 use opentelemetry_sdk::trace::{
@@ -13,8 +19,6 @@ use opentelemetry_sdk::trace::{
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_semantic_conventions::resource::{SERVICE_NAME, SERVICE_VERSION};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
-use std::env;
-use std::time::Duration;
 use tokio::runtime::Runtime;
 use tracing::{Level, Subscriber};
 use tracing_error::ErrorLayer;
@@ -38,11 +42,14 @@ fn resource() -> Resource {
 pub struct Telemetry {
     rt: Runtime,
     tracing_provider: opentelemetry_sdk::trace::SdkTracerProvider,
+    logger_provider: SdkLoggerProvider,
 }
 
 impl Telemetry {
     pub fn shutdown(self, timeout: Duration) {
         let _ = self.tracing_provider.shutdown();
+        let _ = self.logger_provider.shutdown();
+
         self.rt.shutdown_timeout(timeout);
     }
 }
@@ -62,13 +69,24 @@ pub fn install_telemetry_collector() -> Telemetry {
         .build()
         .unwrap();
 
-    let provider = SdkTracerProvider::builder()
+    let tracer_provider = SdkTracerProvider::builder()
         .with_sampler(Sampler::AlwaysOn)
         .with_id_generator(XrayIdGenerator::default())
         .with_resource(resource())
-        .with_span_processor(opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(exporter, runtime::Tokio).build())        .build();
+        .with_span_processor(opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(exporter, runtime::Tokio).build())
+        .build();
 
-    let tracer = provider.tracer("tracing-otel");
+    let log_exporter = LogExporter::builder()
+        .with_http()
+        .build()
+        .expect("Failed to create log exporter");
+
+    let logger_provider = SdkLoggerProvider::builder()
+        .with_resource(resource())
+        .with_batch_exporter(log_exporter)
+        .build();
+
+    let tracer = tracer_provider.tracer("tracing-otel");
     let formatter = std::env::var("LAYA_LOG_FORMATTER").unwrap_or("compact".into());
 
     tracing_subscriber::registry()
@@ -80,6 +98,7 @@ pub fn install_telemetry_collector() -> Telemetry {
                 .from_env_lossy(),
         )
         .with(OpenTelemetryLayer::new(tracer))
+        .with(OpenTelemetryTracingBridge::new(&logger_provider))
         .with(match formatter.as_str() {
             "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
             "json" => tracing_subscriber::fmt::layer().json().boxed(),
@@ -87,5 +106,5 @@ pub fn install_telemetry_collector() -> Telemetry {
         })
         .init();
 
-    Telemetry { rt, tracing_provider: provider.clone() }
+    Telemetry { rt, tracing_provider: tracer_provider.clone(), logger_provider }
 }

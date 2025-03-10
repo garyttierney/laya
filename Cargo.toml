@@ -75,16 +75,17 @@ hyper-util = { version = "0.1", features = [
     "tokio",
 ] }
 mediatype = { version = "0.19" }
-opentelemetry = { version = "0.28", features = ["trace", "metrics", ] }
+opentelemetry = { version = "0.28", features = ["trace", "metrics"] }
 opentelemetry-xray = "0.1"
 opentelemetry-http = { version = "0.28" }
 opentelemetry_sdk = { version = "0.28", default-features = false, features = [
     "trace",
     "rt-tokio",
-    "experimental_trace_batch_span_processor_with_async_runtime"
+    "experimental_trace_batch_span_processor_with_async_runtime",
 ] }
 opentelemetry-otlp = { version = "0.28", default-features = false, features = [
     "trace",
+    "logs",
     "http-proto",
     "reqwest-client",
 ] }
@@ -112,4 +113,11 @@ tower-http = { version = "0.6", features = [
 ] }
 urlencoding = { version = "2" }
 opentelemetry-aws = "0.16.0"
-tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = ["http", "tracing_level_info"] }
+tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = [
+    "http",
+    "tracing_level_info",
+] }
+opentelemetry-appender-tracing = { version = "0.28", features = [
+    "tracing-opentelemetry",
+    "experimental_metadata_attributes",
+] }

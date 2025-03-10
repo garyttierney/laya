@@ -1,31 +1,28 @@
 use std::env;
 use std::time::Duration;
 
-use opentelemetry::global::{self, set_tracer_provider};
+use opentelemetry::global::{self};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_aws::trace::XrayIdGenerator;
-use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter};
+use opentelemetry_otlp::LogExporter;
 use opentelemetry_resource_detectors::{
-    HostResourceDetector, OsResourceDetector, ProcessResourceDetector,
+    OsResourceDetector, ProcessResourceDetector,
 };
-use opentelemetry_sdk::logs::{BatchConfig, SdkLoggerProvider};
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::resource::{EnvResourceDetector, ResourceDetector};
-use opentelemetry_sdk::trace::{
-    BatchConfig, RandomIdGenerator, Sampler, SdkTracerProvider, Tracer,
-};
+use opentelemetry_sdk::resource::EnvResourceDetector;
+use opentelemetry_sdk::trace::{Sampler, SdkTracerProvider};
 use opentelemetry_sdk::{runtime, Resource};
-use opentelemetry_semantic_conventions::resource::{SERVICE_NAME, SERVICE_VERSION};
-use opentelemetry_semantic_conventions::SCHEMA_URL;
+use opentelemetry_semantic_conventions::resource::SERVICE_VERSION;
 use tokio::runtime::Runtime;
 use tracing::{Level, Subscriber};
 use tracing_error::ErrorLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::layer::{Layered, SubscriberExt};
+use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Layer, Registry};
+use tracing_subscriber::{EnvFilter, Layer};
 
 fn resource() -> Resource {
     Resource::builder()

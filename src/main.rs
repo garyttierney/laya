@@ -1,55 +1,35 @@
-#![allow(unused)]
-
 pub mod http;
 pub mod iiif;
 pub mod image;
 pub mod runtime;
 pub mod telemetry;
 
-use std::env;
-use std::iter::once;
 use std::net::SocketAddr;
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
 use http::IiifImageService;
-use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
-use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::service::TowerToHyperService;
 use kaduceus::KakaduContext;
-use mediatype::{MediaType, MediaTypeBuf};
-use opentelemetry::trace::FutureExt;
-use opentelemetry::Context;
-use opentelemetry_sdk::trace::Span;
 use runtime::tokio::TokioRuntime;
 use runtime::Runtime;
 use serde::{Deserialize, Serialize};
-use tower::{ServiceBuilder, ServiceExt};
-use tower_http::catch_panic::CatchPanicLayer;
-use tower_http::classify::StatusInRangeAsFailures;
-use tower_http::cors::{Any, CorsLayer};
-use tower_http::normalize_path::NormalizePathLayer;
-use tower_http::request_id::PropagateRequestIdLayer;
+use tower::ServiceBuilder;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tower_http::trace::TraceLayer;
 use tracing::field::Empty;
-use tracing::{info, info_span, Level};
-use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_opentelemetry_instrumentation_sdk::http::http_server::{
-    make_span_from_request, update_span_from_response,
-};
+use tracing::info_span;
+use tracing_opentelemetry_instrumentation_sdk::http::http_server::update_span_from_response;
 use tracing_opentelemetry_instrumentation_sdk::http::{
     http_flavor, http_host, http_method, url_scheme, user_agent,
 };
 use tracing_opentelemetry_instrumentation_sdk::otel_trace_span;
 
-use crate::iiif::Format;
 use crate::image::metadata::KaduceusImageReader;
 use crate::image::{ImagePipelineBuilder, LocalImageSourceResolver};
 

@@ -80,7 +80,7 @@ pub fn install_telemetry_collector() -> Telemetry {
         )
         .with(
             tracing_subscriber::fmt::layer()
-                .pretty()
+                .compact()
                 .with_thread_names(true),
         )
         .with(OpenTelemetryLayer::new(tracer))

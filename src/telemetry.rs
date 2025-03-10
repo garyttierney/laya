@@ -15,7 +15,7 @@ use opentelemetry_sdk::trace::{Sampler, SdkTracerProvider};
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_semantic_conventions::resource::SERVICE_VERSION;
 use tokio::runtime::Runtime;
-use tracing::{Level, Subscriber};
+use tracing::Level;
 use tracing_error::ErrorLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;

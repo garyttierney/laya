@@ -24,9 +24,10 @@ use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing::field::Empty;
 use tracing::info_span;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_opentelemetry_instrumentation_sdk::http::http_server::update_span_from_response;
 use tracing_opentelemetry_instrumentation_sdk::http::{
-    http_flavor, http_host, http_method, url_scheme, user_agent,
+    extract_context, http_flavor, http_host, http_method, url_scheme, user_agent,
 };
 use tracing_opentelemetry_instrumentation_sdk::otel_trace_span;
 
@@ -71,7 +72,7 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
             TraceLayer::new_for_http()
                 .make_span_with(|req: &Request<Incoming>| {
                     let http_method = http_method(req.method());
-                    otel_trace_span!(
+                    let span = otel_trace_span!(
                         parent: None,
                         "HTTP request",
                         http.request.method = %http_method,
@@ -90,7 +91,11 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
                         trace_id = Empty, // to set on response
                         request_id = Empty, // to set
                         exception.message = Empty, // to set on response
-                    )
+                    );
+
+                    let context = extract_context(req.headers());
+                    span.set_parent(context);
+                    span
                 })
                 .on_response(|response: &Response<_>, latency: Duration, span: &tracing::Span| {
                     update_span_from_response(span, response)

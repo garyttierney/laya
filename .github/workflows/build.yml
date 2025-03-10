@@ -9,7 +9,6 @@ on:
 env:
   REGISTRY: 167865917244.dkr.ecr.eu-west-1.amazonaws.com
   IMAGE_NAME: dlcsspinup-laya
-  CARGO_INCREMENTAL: 0
   CARGO_NET_GIT_FETCH_WITH_CLI: true
   CARGO_NET_RETRY: 10
   CARGO_TERM_COLOR: always

@@ -1339,7 +1339,7 @@ dependencies = [
 [[package]]
 name = "kaduceus"
 version = "0.1.0"
-source = "git+https://github.com/digirati-co-uk/kaduceus#23ec13fc7dd8fbe0c1a5142d04ea0c94c4b63e45"
+source = "git+https://github.com/digirati-co-uk/kaduceus#65a90e7edc84578c223f4abdc1369fc55eed66b6"
 dependencies = [
  "cxx",
  "cxx-build",

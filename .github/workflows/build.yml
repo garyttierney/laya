@@ -97,7 +97,8 @@ jobs:
       - run: |
           buildah login \
             -u "${{ steps.login-ecr.outputs.docker_username_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}" \
-            -p "${{ steps.login-ecr.outputs.docker_password_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}"
+            -p "${{ steps.login-ecr.outputs.docker_password_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}" \
+            ${{ env.REGISTRY }}
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2

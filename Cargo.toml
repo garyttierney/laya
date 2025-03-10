@@ -59,14 +59,14 @@ rt-glommio = []
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 color-eyre = { version = "0.6" }
-config = { version = "0.14", features = ["toml", "json"] }
+config = { version = "0.15", features = ["toml", "json"] }
 kaduceus = { version = "0.1.0", git = "https://github.com/digirati-co-uk/kaduceus", optional = true }
 futures = { version = "0.3" }
 headers-accept = { version = "0.1" }
 http-body = { version = "1" }
 http-body-util = { version = "0.1" }
-hyper = { version = "1.4.1", features = ["server", "http2", "http1"] }
-hyper-util = { version = "0.1.6", features = [
+hyper = { version = "1.6", features = ["server", "http2", "http1"] }
+hyper-util = { version = "0.1", features = [
     "server-auto",
     "server",
     "service",
@@ -93,15 +93,14 @@ opentelemetry-semantic-conventions = { version = "0.28", features = [
     "semconv_experimental",
 ] }
 num_cpus = { version = "1" }
-once_cell = { version = "1" }
 serde = { version = "1" }
 tracing = { version = "0.1" }
 tracing-error = { version = "0.2" }
 tracing-opentelemetry = { version = "0.29" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tokio = { version = "1.40", features = ["full"], optional = true }
-tower = { version = "0.5.1", features = ["tracing", "util"] }
-tower-http = { version = "0.6.1", features = [
+tokio = { version = "1.44", features = ["full"], optional = true }
+tower = { version = "0.5", features = ["tracing", "util"] }
+tower-http = { version = "0.6", features = [
     "cors",
     "catch-panic",
     "normalize-path",

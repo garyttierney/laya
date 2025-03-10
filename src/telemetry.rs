@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use opentelemetry::global::{self, set_tracer_provider};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
@@ -15,13 +13,15 @@ use opentelemetry_sdk::trace::{
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_semantic_conventions::resource::{SERVICE_NAME, SERVICE_VERSION};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
+use std::env;
+use std::time::Duration;
 use tokio::runtime::Runtime;
-use tracing::Level;
+use tracing::{Level, Subscriber};
 use tracing_error::ErrorLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::layer::{Layered, SubscriberExt};
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{EnvFilter, Layer, Registry};
 
 fn resource() -> Resource {
     Resource::builder()
@@ -69,6 +69,7 @@ pub fn install_telemetry_collector() -> Telemetry {
         .with_span_processor(opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(exporter, runtime::Tokio).build())        .build();
 
     let tracer = provider.tracer("tracing-otel");
+    let formatter = std::env::var("LAYA_LOG_FORMATTER").unwrap_or("compact".into());
 
     tracing_subscriber::registry()
         .with(ErrorLayer::default())
@@ -78,12 +79,12 @@ pub fn install_telemetry_collector() -> Telemetry {
                 .with_env_var("LAYA_LOG")
                 .from_env_lossy(),
         )
-        .with(
-            tracing_subscriber::fmt::layer()
-                .compact()
-                .with_thread_names(true),
-        )
         .with(OpenTelemetryLayer::new(tracer))
+        .with(match formatter.as_str() {
+            "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
+            "json" => tracing_subscriber::fmt::layer().json().boxed(),
+            "pretty" | _ => tracing_subscriber::fmt::layer().pretty().boxed(),
+        })
         .init();
 
     Telemetry { rt, tracing_provider: provider.clone() }

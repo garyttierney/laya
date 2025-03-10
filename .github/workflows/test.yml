@@ -34,14 +34,31 @@ jobs:
           role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_retags
           aws-region: eu-west-1          
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest, cargo-llvm-cov
+
       - name: Build
         run: cargo build --all
         env:
           CARGO_INCREMENTAL: 0
-      - name: Test
-        run: cargo test --all
 
+      - name: Run tests
+        run: |
+          cargo llvm-cov nextest
+          cargo llvm-cov report --lcov --output-path lcov.info
+          cargo llvm-cov report --html
+        env:
+          CARGO_TERM_COLOR: always
+
+      - name: Upload coverage report
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/llvm-cov/html
   cargo-deny:
     name: Check dependencies
     runs-on: ubuntu-24.04
@@ -58,8 +75,11 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_retags
           aws-region: eu-west-1          
-      - uses: EmbarkStudios/cargo-deny-action@v2
-
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - run: cargo deny check
+  
   clippy:
     name: Clippy
     runs-on: ubuntu-24.04
@@ -82,10 +102,21 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_retags
           aws-region: eu-west-1          
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy --workspace --all-targets --all-features -- -Aunused
+         
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: clippy-sarif, sarif-fmt
+      - run: cargo clippy --workspace --all-targets --all-features -- -Aunused --message-format=json | clippy-sarif | tee results.sarif | sarif-fmt
+
+      # Requires GitHub Advanced Security
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: results.sarif
 
   fmt:
     name: Formatting

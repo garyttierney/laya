@@ -3,8 +3,8 @@ use std::future::Future;
 use kaduceus::{KakaduContext, KakaduImageReader};
 
 use super::ImageMetadataResolver;
-use crate::iiif::info::ImageInfo;
-use crate::image::ImageSource;
+use crate::{iiif::info::ImageInfo, storage::FileOrStream};
+
 
 pub struct KaduceusImageReader {
     context: KakaduContext,
@@ -17,13 +17,13 @@ impl KaduceusImageReader {
 }
 
 impl ImageMetadataResolver for KaduceusImageReader {
-    fn info<'a>(&'a self, location: ImageSource) -> Box<dyn Future<Output = ImageInfo> + 'a> {
+    fn info<'a>(&'a self, location: FileOrStream) -> Box<dyn Future<Output = ImageInfo> + 'a> {
         Box::new(async move {
             let stream = match location {
-                ImageSource::File(path) => {
+                FileOrStream::File(path) => {
                     todo!()
                 }
-                ImageSource::Stream(reader) => Box::into_pin(reader),
+                FileOrStream::Stream(reader) => Box::into_pin(reader),
             };
 
             let mut reader = KakaduImageReader::new(self.context.clone(), stream, None);

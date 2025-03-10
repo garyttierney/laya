@@ -51,8 +51,9 @@ debug = "full"
 split-debuginfo = "packed"
 
 [features]
-default = ["rt-tokio", "kaduceus"]
+default = ["rt-tokio", "kaduceus", "opendal"]
 kaduceus = ["dep:kaduceus"]
+opendal = ["dep:opendal"]
 rt-tokio = ["dep:tokio"]
 rt-glommio = []
 
@@ -72,6 +73,7 @@ hyper-util = { version = "0.1", features = [
     "http1",
     "tokio",
 ] }
+opendal = { version = "0.52", optional = true }
 opentelemetry = { version = "0.28", features = ["trace", "metrics"] }
 opentelemetry-appender-tracing = { version = "0.28", features = [
     "tracing-opentelemetry",

@@ -2,6 +2,7 @@ pub mod http;
 pub mod iiif;
 pub mod image;
 pub mod runtime;
+pub mod storage;
 pub mod telemetry;
 
 use std::net::SocketAddr;
@@ -15,6 +16,7 @@ use hyper::header::{AUTHORIZATION, COOKIE};
 use hyper::{Request, Response};
 use hyper_util::service::TowerToHyperService;
 use kaduceus::KakaduContext;
+use opentelemetry_http::HeaderExtractor;
 use runtime::tokio::TokioRuntime;
 use runtime::Runtime;
 use serde::{Deserialize, Serialize};
@@ -93,8 +95,12 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
                         exception.message = Empty, // to set on response
                     );
 
-                    let context = extract_context(req.headers());
+                    let extractor = HeaderExtractor(req.headers());
+                    let context = opentelemetry::global::get_text_map_propagator(|propagator| {
+                        propagator.extract(&extractor)
+                    });
                     span.set_parent(context);
+
                     span
                 })
                 .on_response(|response: &Response<_>, latency: Duration, span: &tracing::Span| {
@@ -125,6 +131,10 @@ pub struct LayaOptions {
     /// Use a Glommio thread-per-core runtime to handle IO and server traffic.
     #[arg(long, conflicts_with_all(["tokio"]), help_heading("Runtime"))]
     glommio: bool,
+
+    /// Disable sending trace and log data to an OTEL endpoint.
+    #[arg(long, default_missing_value("true"))]
+    disable_opentelemetry: bool,
 
     /// Network address the HTTP server is bound to.
     #[arg(long, short, default_value("127.0.0.1:43594"))]
@@ -193,8 +203,8 @@ pub struct TokioRuntimeOptions {
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    let telemetry_rt = telemetry::install_telemetry_collector();
     let options = LayaOptions::parse();
+    let telemetry = telemetry::install_telemetry_collector(options.disable_opentelemetry);
 
     let rt = Rt::Tokio;
 
@@ -209,7 +219,7 @@ fn main() -> color_eyre::Result<()> {
             Rt::Tokio => start(TokioRuntime, options),
         }
 
-        telemetry_rt.shutdown(Duration::from_secs(5));
+        telemetry.shutdown(Duration::from_secs(5));
 
         Ok(())
     })

@@ -5,7 +5,7 @@ use opentelemetry::global::{self};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_aws::trace::XrayIdGenerator;
+use opentelemetry_aws::trace::{XrayIdGenerator, XrayPropagator};
 use opentelemetry_otlp::LogExporter;
 use opentelemetry_resource_detectors::{OsResourceDetector, ProcessResourceDetector};
 use opentelemetry_sdk::logs::SdkLoggerProvider;
@@ -34,22 +34,28 @@ fn resource() -> Resource {
         .build()
 }
 
-pub struct Telemetry {
+pub struct TelemetryHandle {
     rt: Runtime,
-    tracing_provider: opentelemetry_sdk::trace::SdkTracerProvider,
-    logger_provider: SdkLoggerProvider,
+    tracing_provider: Option<SdkTracerProvider>,
+    logger_provider: Option<SdkLoggerProvider>,
 }
 
-impl Telemetry {
-    pub fn shutdown(self, timeout: Duration) {
-        let _ = self.tracing_provider.shutdown();
-        let _ = self.logger_provider.shutdown();
+impl TelemetryHandle {
+    pub fn shutdown(mut self, timeout: Duration) {
+        let _ = self
+            .tracing_provider
+            .take()
+            .and_then(|provider| provider.shutdown().ok());
+        let _ = self
+            .logger_provider
+            .take()
+            .and_then(|provider| provider.shutdown().ok());
 
         self.rt.shutdown_timeout(timeout);
     }
 }
 
-pub fn install_telemetry_collector() -> Telemetry {
+pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_time()
         .enable_io()
@@ -57,26 +63,28 @@ pub fn install_telemetry_collector() -> Telemetry {
         .expect("unable to construct a telemetry runtime");
 
     let _rt = rt.enter();
-    global::set_text_map_propagator(TraceContextPropagator::new());
-    // let console_layer = console_subscriber::spawn();
-    let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .with_http()
-        .build()
-        .unwrap();
 
-    let tracer_provider = SdkTracerProvider::builder()
+    let (tracer_provider, logger_provider) = if !disable_otel {
+        global::set_text_map_propagator(XrayPropagator::new());
+
+        let exporter = opentelemetry_otlp::SpanExporter::builder()
+            .with_http()
+            .build()
+            .unwrap();
+
+        let tracer_provider = SdkTracerProvider::builder()
         .with_sampler(Sampler::AlwaysOn)
         .with_id_generator(XrayIdGenerator::default())
         .with_resource(resource())
         .with_span_processor(opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(exporter, runtime::Tokio).build())
         .build();
 
-    let log_exporter = LogExporter::builder()
-        .with_http()
-        .build()
-        .expect("Failed to create log exporter");
+        let log_exporter = LogExporter::builder()
+            .with_http()
+            .build()
+            .expect("Failed to create log exporter");
 
-    let logger_provider = SdkLoggerProvider::builder()
+        let logger_provider = SdkLoggerProvider::builder()
         .with_resource(resource())
         .with_log_processor(
             opentelemetry_sdk::logs::log_processor_with_async_runtime::BatchLogProcessor::builder(
@@ -87,7 +95,11 @@ pub fn install_telemetry_collector() -> Telemetry {
         )
         .build();
 
-    let tracer = tracer_provider.tracer("tracing-otel");
+        (Some(tracer_provider), Some(logger_provider))
+    } else {
+        (None, None)
+    };
+
     let formatter = std::env::var("LAYA_LOG_FORMATTER").unwrap_or("compact".into());
 
     tracing_subscriber::registry()
@@ -98,8 +110,16 @@ pub fn install_telemetry_collector() -> Telemetry {
                 .with_env_var("LAYA_LOG")
                 .from_env_lossy(),
         )
-        .with(OpenTelemetryLayer::new(tracer))
-        .with(OpenTelemetryTracingBridge::new(&logger_provider))
+        .with(
+            tracer_provider
+                .clone()
+                .map(|provider| OpenTelemetryLayer::new(provider.tracer("tracing-otel"))),
+        )
+        .with(
+            logger_provider
+                .as_ref()
+                .map(|provider| OpenTelemetryTracingBridge::new(provider)),
+        )
         .with(match formatter.as_str() {
             "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
             "json" => tracing_subscriber::fmt::layer().json().boxed(),
@@ -107,5 +127,5 @@ pub fn install_telemetry_collector() -> Telemetry {
         })
         .init();
 
-    Telemetry { rt, tracing_provider: tracer_provider.clone(), logger_provider }
+    TelemetryHandle { rt, tracing_provider: tracer_provider.clone(), logger_provider }
 }

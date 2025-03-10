@@ -1,5 +1,5 @@
 mod locator;
-pub use locator::{ImageSource, ImageSourceResolver, LocalImageSourceResolver};
+pub use locator::{ ImageSourceResolver, LocalImageSourceResolver};
 
 mod pipeline;
 pub use pipeline::{ImagePipeline, ImagePipelineBuilder};

@@ -1,11 +1,10 @@
 use std::future::Future;
 
-use super::ImageSource;
-use crate::iiif::info::ImageInfo;
+use crate::{iiif::info::ImageInfo, storage::FileOrStream};
 
 mod kaduceus;
 pub use kaduceus::KaduceusImageReader;
 
 pub trait ImageMetadataResolver {
-    fn info<'a>(&'a self, location: ImageSource) -> Box<dyn Future<Output = ImageInfo> + 'a>;
+    fn info<'a>(&'a self, location: FileOrStream) -> Box<dyn Future<Output = ImageInfo> + 'a>;
 }

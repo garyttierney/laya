@@ -109,7 +109,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: clippy-sarif, sarif-fmt
-      - run: cargo clippy --workspace --all-targets --all-features -- -Aunused --message-format=json | clippy-sarif | tee results.sarif | sarif-fmt
+      - run: cargo clippy --workspace --all-targets --all-features --message-format=json -- -Aunused | clippy-sarif | tee results.sarif | sarif-fmt
 
       # Requires GitHub Advanced Security
       - name: Upload SARIF file

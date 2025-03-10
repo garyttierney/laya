@@ -17,32 +17,22 @@ generic = true
 [[workspace.metadata.distributions]]
 name = "arm64-generic"
 triple = "aarch64-unknown-linux-gnu"
-cpu = "neoverse-v1"
+cpu = "neoverse-v2"
 generic = true
-docker = "linux/arm64"
+docker = "linux/arm64/v8"
 runner = "ubuntu-24.04-arm"
 
 [[workspace.metadata.distributions]]
-name = "apple"
-triple = "aarch64-apple-darwin"
-cpu = "apple-latest"
-runner = "macos-latest"
-generic = true
-docker = false
+name = "x86-64-v4"
+triple = "x86_64-unknown-linux-gnu"
+cpu = "x86-64-v4"
+docker = "linux/amd64/v4"
 
 [[workspace.metadata.distributions]]
-name = "amd-zen4"
+name = "x86-64-v3"
 triple = "x86_64-unknown-linux-gnu"
-cpu = "znver4"
-generic = false
-docker = "linux/amd64"
-
-[[workspace.metadata.distributions]]
-name = "intel-xeon-gen4"
-triple = "x86_64-unknown-linux-gnu"
-cpu = "sapphirerapids"
-generic = false
-docker = "linux/amd64"
+cpu = "x86-64-v3"
+docker = "linux/amd64/v3"
 
 [[workspace.metadata.distributions]]
 triple = "aarch64-unknown-linux-gnu"

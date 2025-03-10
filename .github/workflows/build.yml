@@ -59,7 +59,7 @@ jobs:
         env:
           CARGO_REGISTRIES_DLCS_TOKEN: ${{ steps.cargo_token.outputs.token }}
         run: |
-          native_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions | map(select(.generic == true))')
+          native_distributions=$(cargo metadata --format-version=1 | jq -c '.metadata.distributions')
           echo "native_distributions=$native_distributions" >> "$GITHUB_OUTPUT"
       - id: version
         run: echo "version=$(cargo pkgid | cut -d '@' -f2)" >> $GITHUB_OUTPUT
@@ -88,6 +88,11 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+          cache-on-failure: true
+          cache-directories: |
+            vendor
       - uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.triple }}
@@ -100,6 +105,21 @@ jobs:
         env:
           TARGET_CPU: ${{ matrix.cpu }}
           RUSTFLAGS: "-Ctarget-cpu=${{ matrix.cpu }} -Ctarget-feature=+crt-static"
+
+      - name: Create OCI container
+        run: |
+          container=$(buildah from --platform ${{ matrix.docker }} scratch)
+          buildah copy $container target/${{ matrix.triple }}/release/laya /bin/laya
+          buildah config --entrypoint /bin/laya $container
+          buildah push --digestfile=/tmp/digest imageID docker://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.name }}
+          path: /tmp/digest
+          if-no-files-found: error
+          retention-days: 1
 
   build-containers:
     needs: plan

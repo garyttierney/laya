@@ -29,6 +29,7 @@ impl<L: ImageSourceResolver, R: ImageMetadataResolver> ImagePipelineBuilder<L, R
     }
 }
 
+#[allow(unused)]
 pub struct ImagePipeline<L: ImageSourceResolver, R: ImageMetadataResolver> {
     locator: L,
     reader: R,

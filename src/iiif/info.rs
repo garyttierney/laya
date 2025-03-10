@@ -1,5 +1,6 @@
 use crate::iiif::Dimension;
 
+#[allow(unused)]
 pub struct ImageInfo {
     // @context: "http://iiif.io/api/image/3/context.json",
     // type: "ImageService3",
@@ -36,12 +37,14 @@ pub struct ImageInfo {
     rights: Option<String>,
 }
 
+#[allow(unused)]
 pub struct PreferredSize {
     // type: "Size",
     width: Dimension,
     height: Dimension,
 }
 
+#[allow(unused)]
 pub struct Tile {
     // type: "Tile",
     scale_factors: Vec<u16>,

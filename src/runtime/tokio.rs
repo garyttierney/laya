@@ -54,8 +54,8 @@ impl Runtime for TokioRuntime {
             .build()
             .expect("failed to create HTTP runtime");
 
-        let error: Result<_, std::io::Error> = rt.block_on(async move {
-            let listener_span = info_span!("listener");
+        let _error: Result<_, std::io::Error> = rt.block_on(async move {
+            let _listener_span = info_span!("listener");
             let listener = TcpListener::bind(options.bind_address).await?;
 
             info!("Listening on {:?}", options.bind_address);

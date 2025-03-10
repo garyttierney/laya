@@ -29,7 +29,7 @@ use tracing::info_span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_opentelemetry_instrumentation_sdk::http::http_server::update_span_from_response;
 use tracing_opentelemetry_instrumentation_sdk::http::{
-    extract_context, http_flavor, http_host, http_method, url_scheme, user_agent,
+    http_flavor, http_host, http_method, url_scheme, user_agent,
 };
 use tracing_opentelemetry_instrumentation_sdk::otel_trace_span;
 
@@ -60,7 +60,7 @@ pub struct Options {
     iiif: IiifImageServiceOptions,
 }
 
-pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
+pub fn start<R: Runtime>(options: LayaOptions) {
     let kdu_context = KakaduContext::default();
     let image_pipeline = ImagePipelineBuilder::new()
         .with_locator(LocalImageSourceResolver::new("samples"))
@@ -102,7 +102,7 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
 
                     span
                 })
-                .on_response(|response: &Response<_>, latency: Duration, span: &tracing::Span| {
+                .on_response(|response: &Response<_>, _: Duration, span: &tracing::Span| {
                     update_span_from_response(span, response)
                 }),
         )
@@ -215,7 +215,7 @@ fn main() -> color_eyre::Result<()> {
             }
 
             #[cfg(feature = "rt-tokio")]
-            Rt::Tokio => start(TokioRuntime, options),
+            Rt::Tokio => start::<TokioRuntime>(options),
         }
 
         telemetry.shutdown(Duration::from_secs(5));

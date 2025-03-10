@@ -50,14 +50,14 @@ impl<L: ImageSourceResolver + Send + Sync, R: ImageMetadataResolver + Send + Syn
 
     fn call(&mut self, req: Request<Incoming>) -> Self::Future {
         let options = self.options.clone();
-        let pipeline = self.pipeline.clone();
+        let _pipeline = self.pipeline.clone();
 
         Box::pin(dispatch_request(req, options))
     }
 
     fn poll_ready(
         &mut self,
-        cx: &mut std::task::Context<'_>,
+        _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -75,7 +75,7 @@ pub async fn dispatch_request(
     match req.uri().path() {
         "/" => Response::builder()
             .status(StatusCode::OK)
-            .body(Full::new("OK!".into()).map_err(|e| unreachable!()).boxed()),
+            .body(Full::new("OK!".into()).map_err(|_| unreachable!()).boxed()),
         _ => {
             let request = decode_request(req, &options);
 

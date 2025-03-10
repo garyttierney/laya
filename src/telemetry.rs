@@ -9,7 +9,6 @@ use opentelemetry_aws::trace::{XrayIdGenerator, XrayPropagator};
 use opentelemetry_otlp::LogExporter;
 use opentelemetry_resource_detectors::{OsResourceDetector, ProcessResourceDetector};
 use opentelemetry_sdk::logs::SdkLoggerProvider;
-use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::resource::EnvResourceDetector;
 use opentelemetry_sdk::trace::{Sampler, SdkTracerProvider};
 use opentelemetry_sdk::{runtime, Resource};
@@ -118,12 +117,12 @@ pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
         .with(
             logger_provider
                 .as_ref()
-                .map(|provider| OpenTelemetryTracingBridge::new(provider)),
+                .map(OpenTelemetryTracingBridge::new),
         )
         .with(match formatter.as_str() {
             "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
             "json" => tracing_subscriber::fmt::layer().json().boxed(),
-            "pretty" | _ => tracing_subscriber::fmt::layer().pretty().boxed(),
+            _ => tracing_subscriber::fmt::layer().pretty().boxed(),
         })
         .init();
 

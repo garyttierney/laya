@@ -72,6 +72,10 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.plan.outputs.native-distributions) }}
     steps:
+      - name: Install buildah
+        run: sudo apt install -y buildah
+        if: endsWith(matrix.runner, 'arm') 
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive

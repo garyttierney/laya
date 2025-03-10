@@ -8,7 +8,7 @@ use opentelemetry_resource_detectors::{
     HostResourceDetector, OsResourceDetector, ProcessResourceDetector,
 };
 use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::resource::ResourceDetector;
+use opentelemetry_sdk::resource::{EnvResourceDetector, ResourceDetector};
 use opentelemetry_sdk::trace::{
     BatchConfig, RandomIdGenerator, Sampler, SdkTracerProvider, Tracer,
 };
@@ -25,13 +25,13 @@ use tracing_subscriber::EnvFilter;
 
 fn resource() -> Resource {
     Resource::builder()
-        .with_schema_url(
-            [
-                KeyValue::new(SERVICE_NAME, env!("CARGO_PKG_NAME")),
-                KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")),
-            ],
-            SCHEMA_URL,
-        )
+        .with_service_name(env!("CARGO_PKG_NAME"))
+        .with_detectors(&[
+            Box::new(OsResourceDetector),
+            Box::new(ProcessResourceDetector),
+            Box::new(EnvResourceDetector::new()),
+        ])
+        .with_attribute(KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")))
         .build()
 }
 

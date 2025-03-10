@@ -106,7 +106,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.runner }}
+          shared-key: "${{ matrix.runner || 'ubuntu-24.04' }}"
           cache-on-failure: true
           cache-targets: true
 

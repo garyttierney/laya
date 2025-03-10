@@ -1,3 +1,5 @@
+name: Deploy
+
 on:
   workflow_run:
     workflows: [Build artifacts]
@@ -5,6 +7,9 @@ on:
   
 jobs:
   on-success:
+    concurrency:
+      group: deployment
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       id-token: write

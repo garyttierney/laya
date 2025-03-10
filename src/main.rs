@@ -38,11 +38,14 @@ use tower_http::request_id::PropagateRequestIdLayer;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tracing::field::Empty;
 use tracing::{info, info_span, Level};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
+use tracing_opentelemetry_instrumentation_sdk::http::{http_flavor, http_host, http_method, url_scheme, user_agent};
 use tracing_opentelemetry_instrumentation_sdk::http::http_server::{
     make_span_from_request, update_span_from_response,
 };
+use tracing_opentelemetry_instrumentation_sdk::otel_trace_span;
 
 use crate::iiif::Format;
 use crate::image::metadata::KaduceusImageReader;
@@ -87,10 +90,27 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|req: &Request<Incoming>| {
-                    let mut span = make_span_from_request(&req);
-                    span.set_parent(Context::new());
-
-                    span
+                    let http_method = http_method(req.method());
+                    otel_trace_span!(
+                        parent: None,
+                        "HTTP request",
+                        http.request.method = %http_method,
+                        network.protocol.version = %http_flavor(req.version()),
+                        server.address = http_host(req),
+                        // server.port = req.uri().port(),
+                        http.client.address = Empty, //%$request.connection_info().realip_remote_addr().unwrap_or(""),
+                        user_agent.original = user_agent(req),
+                        http.response.status_code = Empty, // to set on response
+                        url.path = req.uri().path(),
+                        url.query = req.uri().query(),
+                        url.scheme = url_scheme(req.uri()),
+                        otel.name = %http_method, // to set by router of "webframework" after
+                        otel.kind = ?opentelemetry::trace::SpanKind::Server,
+                        otel.status_code = Empty, // to set on response
+                        trace_id = Empty, // to set on response
+                        request_id = Empty, // to set
+                        exception.message = Empty, // to set on response
+                    )
                 })
                 .on_response(|response: &Response<_>, latency: Duration, span: &tracing::Span| {
                     update_span_from_response(span, response)

@@ -92,11 +92,12 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        
+        with:
+          registries: "167865917244"
       - run: |
-          buildah login \ 
-            -u "${{ steps.login-ecr.outputs.docker_username_167865917244_dkr_ecr_eu-west_1_amazonaws_com}}"
-            -p "${{ steps.login-ecr.outputs.docker_password_167865917244_dkr_ecr_eu-west_1_amazonaws_com}}"
+          buildah login \
+            -u "${{ steps.login-ecr.outputs.docker_username_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}" \
+            -p "${{ steps.login-ecr.outputs.docker_password_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}"
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2

@@ -45,7 +45,6 @@ pub trait Runtime {
         E: Into<Box<dyn Error + Send + Sync>> + Send + Sync + Display + 'static;
 }
 
-#[tracing::instrument(skip_all, err)]
 async fn handle_connection<R, S, E>(
     io: R::Io,
     service: S,

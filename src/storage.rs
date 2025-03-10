@@ -1,4 +1,6 @@
-use std::{error::Error, fmt::Display, path::Path};
+use std::error::Error;
+use std::fmt::Display;
+use std::path::Path;
 
 use tokio::io::AsyncRead;
 
@@ -13,7 +15,8 @@ pub trait StorageProvider {
     fn open(id: &str) -> Result<FileOrStream, StorageError>;
 }
 
-/// A path to a file encapsulated with a factory method that can provide an asynchronous stream if necessary.
+/// A path to a file encapsulated with a factory method that can provide an asynchronous stream if
+/// necessary.
 pub struct FileStream {
     path: Box<Path>,
     stream_factory: FileStreamProvider,
@@ -28,7 +31,8 @@ pub struct FileStream {
 /// based on direct filesystem access, such as using memory mapped files or
 /// DMA.
 ///
-/// If the data source does not optimize for locally available files, a `Box<dyn AsyncRead>` can be obtained from [FileOrStream::as_stream()]
+/// If the data source does not optimize for locally available files, a `Box<dyn AsyncRead>` can be
+/// obtained from [FileOrStream::as_stream()]
 pub enum FileOrStream {
     /// Storage represented by a file on the filesystem.
     File(FileStream),

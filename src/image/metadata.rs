@@ -1,6 +1,7 @@
 use std::future::Future;
 
-use crate::{iiif::info::ImageInfo, storage::FileOrStream};
+use crate::iiif::info::ImageInfo;
+use crate::storage::FileOrStream;
 
 mod kaduceus;
 pub use kaduceus::KaduceusImageReader;

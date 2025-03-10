@@ -1,9 +1,9 @@
+use opendal::Operator;
+
 use super::{FileOrStream, StorageError, StorageProvider};
 
-pub struct OpenDalStorageProvider;
+pub struct OpenDALStorageProvider;
 
-impl StorageProvider for OpenDalStorageProvider {
-    fn open(id: &str) -> Result<FileOrStream, StorageError> {
-        todo!()
-    }
+impl StorageProvider for OpenDALStorageProvider {
+    fn open(id: &str) -> Result<FileOrStream, StorageError> {}
 }

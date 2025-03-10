@@ -7,8 +7,6 @@ use crate::storage::FileOrStream;
 pub trait AsyncReadSeekable: AsyncRead + AsyncSeek {}
 impl<R: AsyncRead + AsyncSeek> AsyncReadSeekable for R {}
 
-
-
 pub trait ImageSourceResolver {
     fn get(&self, identifier: &str) -> Result<FileOrStream, std::io::Error>;
 }

@@ -75,7 +75,6 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
                 .make_span_with(|req: &Request<Incoming>| {
                     let http_method = http_method(req.method());
                     let span = otel_trace_span!(
-                        parent: None,
                         "HTTP request",
                         http.request.method = %http_method,
                         network.protocol.version = %http_flavor(req.version()),

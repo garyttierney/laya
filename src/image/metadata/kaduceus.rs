@@ -3,8 +3,8 @@ use std::future::Future;
 use kaduceus::{KakaduContext, KakaduImageReader};
 
 use super::ImageMetadataResolver;
-use crate::{iiif::info::ImageInfo, storage::FileOrStream};
-
+use crate::iiif::info::ImageInfo;
+use crate::storage::FileOrStream;
 
 pub struct KaduceusImageReader {
     context: KakaduContext,

@@ -59,10 +59,8 @@ rt-glommio = []
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 color-eyre = { version = "0.6" }
-config = { version = "0.15", features = ["toml", "json"] }
 kaduceus = { version = "0.1.0", git = "https://github.com/digirati-co-uk/kaduceus", optional = true }
 futures = { version = "0.3" }
-headers-accept = { version = "0.1" }
 http-body = { version = "1" }
 http-body-util = { version = "0.1" }
 hyper = { version = "1.6", features = ["server", "http2", "http1"] }
@@ -74,15 +72,19 @@ hyper-util = { version = "0.1", features = [
     "http1",
     "tokio",
 ] }
-mediatype = { version = "0.19" }
 opentelemetry = { version = "0.28", features = ["trace", "metrics"] }
-opentelemetry-xray = "0.1"
+opentelemetry-appender-tracing = { version = "0.28", features = [
+    "tracing-opentelemetry",
+    "experimental_metadata_attributes",
+    "experimental_use_tracing_span_context",
+] }
+opentelemetry-aws = "0.16.0"
 opentelemetry-http = { version = "0.28" }
 opentelemetry_sdk = { version = "0.28", default-features = false, features = [
     "trace",
     "rt-tokio",
     "experimental_trace_batch_span_processor_with_async_runtime",
-    "experimental_logs_batch_log_processor_with_async_runtime"
+    "experimental_logs_batch_log_processor_with_async_runtime",
 ] }
 opentelemetry-otlp = { version = "0.28", default-features = false, features = [
     "trace",
@@ -94,12 +96,15 @@ opentelemetry-resource-detectors = "0.7.0"
 opentelemetry-semantic-conventions = { version = "0.28", features = [
     "semconv_experimental",
 ] }
-num_cpus = { version = "1" }
-serde = { version = "1" }
+serde = { version = "1", features = ["derive"] }
 tracing = { version = "0.1" }
 tracing-error = { version = "0.2" }
 tracing-opentelemetry = { version = "0.29" }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = [
+    "http",
+    "tracing_level_info",
+] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tokio = { version = "1.44", features = ["full"], optional = true }
 tower = { version = "0.5", features = ["tracing", "util"] }
 tower-http = { version = "0.6", features = [
@@ -113,13 +118,3 @@ tower-http = { version = "0.6", features = [
     "tracing",
 ] }
 urlencoding = { version = "2" }
-opentelemetry-aws = "0.16.0"
-tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = [
-    "http",
-    "tracing_level_info",
-] }
-opentelemetry-appender-tracing = { version = "0.28", features = [
-    "tracing-opentelemetry",
-    "experimental_metadata_attributes",
-    "experimental_use_tracing_span_context"
-] }

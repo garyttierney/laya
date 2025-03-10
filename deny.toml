@@ -7,20 +7,45 @@ targets = [
 ]
 all-features = true
 
+[advisories]
+# The path where the advisory databases are cloned/fetched into
+#db-path = "$CARGO_HOME/advisory-dbs"
+# The url(s) of the advisory databases to use
+#db-urls = ["https://github.com/rustsec/advisory-db"]
+# A list of advisory IDs to ignore. Note that ignored advisories will still
+# output a note when they are encountered.
+ignore = [
+    #"RUSTSEC-0000-0000",
+    { id = "RUSTSEC-2024-0436", reason = "no available replacement" },
+    #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish
+    #{ crate = "a-crate-that-is-yanked@0.1.1", reason = "you can specify why you are ignoring the yanked crate" },
+]
+
 [licenses]
 version = 2
-allow = ["Apache-2.0", "BSD-2-Clause", "MIT", "Unlicense", "Zlib"]
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "MIT",
+    "Unlicense",
+    "Zlib",
+    "Unicode-3.0",
+]
 
-exceptions = [{ name = "unicode-ident", allow = ["Unicode-DFS-2016"] }]
+
+exceptions = [
+    { name = "tracing-opentelemetry-instrumentation-sdk", allow = [
+        "CC0-1.0",
+    ] },
+]
 
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-skip = [
-    { crate = "sync_wrapper@0.1.2", reason = "used by tower and opentelemetry-http" },
-]
+
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []
+allow-git = ["https://github.com/digirati-co-uk/kaduceus"]

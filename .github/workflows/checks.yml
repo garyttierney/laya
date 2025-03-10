@@ -1,4 +1,4 @@
-name: Test
+name: Checks
 on:
   pull_request:
     branches: [main]
@@ -83,7 +83,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
-      # - run: cargo deny check
+      - run: cargo deny check
   
   clippy:
     name: Clippy

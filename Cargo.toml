@@ -43,7 +43,7 @@ generic = false
 docker = "linux/arm64/v8"
 
 [profile.release]
-lto = "fat"
+lto = "thin"
 opt-level = 3
 codegen-units = 1
 incremental = false

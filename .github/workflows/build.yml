@@ -122,6 +122,7 @@ jobs:
         env:
           TARGET_CPU: ${{ matrix.cpu }}
           RUSTFLAGS: "-Ctarget-cpu=${{ matrix.cpu }} -Ctarget-feature=+crt-static"
+          RUSTC_WRAPPER: sccache
           SCCACHE_GHA_ENABLED: true
 
       - name: Create OCI container

@@ -60,6 +60,11 @@ jobs:
     needs: plan
     name: "${{ matrix.name }} (Native)"
     runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
     env:
       CARGO_REGISTRIES_DLCS_TOKEN: ${{ needs.plan.outputs.cargo_token }}
     strategy:

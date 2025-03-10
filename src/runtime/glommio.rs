@@ -1,5 +1,3 @@
-use super::ServerRuntime;
-
 pub struct GlommioServerRuntime;
 
 // impl ServerRuntime for GlommioServerRuntime {

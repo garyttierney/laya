@@ -129,7 +129,7 @@ jobs:
         run: |
           container=$(buildah from --platform ${{ matrix.docker }} scratch)
           buildah copy $container target/${{ matrix.triple }}/release/laya /bin/laya
-          buildah config --entrypoint /bin/laya $container
+          buildah config --entrypoint '["/bin/laya"]' $container
 
           image=$(buildah commit $container)
           buildah push --digestfile=/tmp/digest $image docker://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}

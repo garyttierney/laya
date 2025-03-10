@@ -16,7 +16,6 @@ all-features = true
 # output a note when they are encountered.
 ignore = [
     #"RUSTSEC-0000-0000",
-    { id = "RUSTSEC-2024-0436", reason = "no available replacement" },
     #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish
     #{ crate = "a-crate-that-is-yanked@0.1.1", reason = "you can specify why you are ignoring the yanked crate" },
 ]
@@ -26,7 +25,6 @@ version = 2
 allow = [
     "Apache-2.0",
     "BSD-2-Clause",
-    "BSD-3-Clause",
     "MIT",
     "Unlicense",
     "Zlib",
@@ -44,8 +42,15 @@ exceptions = [
 multiple-versions = "warn"
 wildcards = "deny"
 
+skip = [
+    { crate = "windows-sys", reason = "included in thousands of crates" },
+]
+
+skip-tree = ["thiserror"]
+
+
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = ["https://github.com/digirati-co-uk/kaduceus"]
+allow-git = []

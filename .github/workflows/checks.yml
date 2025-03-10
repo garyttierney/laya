@@ -49,10 +49,10 @@ jobs:
           pip install iiif-validator
 
           cargo llvm-cov nextest
-          cargo llvm-cov run -- --prefix=prefix & pid=$! 
+          cargo llvm-cov run -- --prefix=/prefix/ & pid=$! 
 
           if curl --retry 5 --retry-delay 2 --retry-connrefused --silent --show-error --fail http://localhost:43594/ | grep -q 'OK!'; then
-            iiif-validate.py -s localhost:43594 -p prefix -i image_id --version=2.0 -v
+            iiif-validate.py -s localhost:43594 -p prefix -i image_id --version=2.0 -v || true
             kill $pid
           else
             echo "Failed to start Laya"

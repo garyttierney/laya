@@ -1,0 +1,33 @@
+on:
+  workflow_run:
+    workflows: [Build artifacts]
+    types: [completed]
+  
+jobs:
+  on-success:
+      runs-on: ubuntu-latest
+      environment:
+        name: dlcs-spinup
+        url: https://laya.dlcs.digirati.io/
+      if: ${{ github.event.workflow_run.conclusion == 'success' }}
+      steps:
+      - id: configure-aws-creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::167865917244:role/Delegated_DLCSDev_GitHubActions_CI_Protagonist
+          aws-region: eu-west-1
+
+      - id: restart-service
+        shell: bash
+        env:
+          ECS_CLUSTER: dlcs
+        run: |
+          aws ecs update-service --force-new-deployment --cluster $ECS_CLUSTER --service dlcsspinup-laya
+
+      - id: wait-service
+        shell: bash
+        env:
+          ECS_CLUSTER: dlcs
+        run: |
+            aws ecs wait services-stable --cluster $ECS_CLUSTER --service dlcsspinup-laya
+        

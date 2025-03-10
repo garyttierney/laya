@@ -121,4 +121,5 @@ tracing-opentelemetry-instrumentation-sdk = { version = "0.26.0", features = [
 opentelemetry-appender-tracing = { version = "0.28", features = [
     "tracing-opentelemetry",
     "experimental_metadata_attributes",
+    "experimental_use_tracing_span_context"
 ] }

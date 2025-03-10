@@ -7,12 +7,10 @@ use hyper::body::{Bytes, Incoming};
 use hyper::rt::{Executor, Read, Timer, Write};
 use hyper::service::Service;
 use hyper::{Request, Response};
-use hyper_util::rt::{TokioIo, TokioTimer};
-use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass, StatusInRangeFailureClass};
+use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass};
 use tower_http::trace::ResponseBody;
-use tracing_subscriber::fmt::format::Full;
 
-use crate::{LayaOptions, Options};
+use crate::LayaOptions;
 
 #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
 pub mod glommio;

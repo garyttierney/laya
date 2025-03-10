@@ -19,7 +19,7 @@ impl KaduceusImageReader {
 impl ImageMetadataResolver for KaduceusImageReader {
     fn info<'a>(&'a self, location: ImageSource) -> Box<dyn Future<Output = ImageInfo> + 'a> {
         Box::new(async move {
-            let mut stream = match location {
+            let stream = match location {
                 ImageSource::File(path) => {
                     todo!()
                 }

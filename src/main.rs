@@ -65,8 +65,6 @@ pub fn start<R: Runtime>(rt: R, options: LayaOptions) {
         .build();
     let image_service = IiifImageService::new_with_prefix(image_pipeline, &options.prefix);
 
-    fn on_response<B>(response: &Response<B>, latency: Duration, span: &tracing::Span) {}
-
     let svc = ServiceBuilder::new()
         .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))
         .layer(

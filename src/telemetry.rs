@@ -7,9 +7,7 @@ use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_aws::trace::XrayIdGenerator;
 use opentelemetry_otlp::LogExporter;
-use opentelemetry_resource_detectors::{
-    OsResourceDetector, ProcessResourceDetector,
-};
+use opentelemetry_resource_detectors::{OsResourceDetector, ProcessResourceDetector};
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::resource::EnvResourceDetector;

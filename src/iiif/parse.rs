@@ -3,8 +3,6 @@ use std::fmt::{Display, Formatter};
 use std::num::NonZero;
 use std::str::FromStr;
 
-use tracing::info;
-
 use super::IiifRequest;
 use crate::http::IiifRequestError;
 use crate::iiif::{Dimension, Format, Quality, Region, Rotation, Scale, Size};

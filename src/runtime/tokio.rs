@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt::Display;
 use std::future::Future;
-use std::net::SocketAddr;
 
 use http_body_util::combinators::BoxBody;
 use hyper::body::{Bytes, Incoming};
@@ -14,7 +13,7 @@ use tower_http::trace::ResponseBody;
 use tracing::{info, info_span, Instrument};
 
 use super::{handle_connection, Runtime};
-use crate::{LayaOptions, Options};
+use crate::LayaOptions;
 
 pub struct TokioRuntime;
 

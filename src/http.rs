@@ -1,22 +1,19 @@
-use std::convert::Infallible;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use std::future::{ready, Future};
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 
 use futures::Stream;
 use http_body_util::combinators::BoxBody;
-use http_body_util::{BodyExt, Empty, Full};
-use hyper::body::{Body, Bytes, Incoming};
-use hyper::service::Service;
-use hyper::{Method, Request, Response, StatusCode};
-use tracing::{error, info};
+use http_body_util::{BodyExt, Full};
+use hyper::body::{Bytes, Incoming};
+use hyper::{Request, Response, StatusCode};
 
 use crate::iiif::info::ImageInfo;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
-use crate::iiif::{Format, IiifRequest, Quality, Region, Rotation, Size};
+use crate::iiif::IiifRequest;
 use crate::image::{ImageMetadataResolver, ImagePipeline, ImageSourceResolver};
 
 pub struct IiifImageService<L: ImageSourceResolver, R: ImageMetadataResolver> {

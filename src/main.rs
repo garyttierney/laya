@@ -41,9 +41,11 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::field::Empty;
 use tracing::{info, info_span, Level};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_opentelemetry_instrumentation_sdk::http::{http_flavor, http_host, http_method, url_scheme, user_agent};
 use tracing_opentelemetry_instrumentation_sdk::http::http_server::{
     make_span_from_request, update_span_from_response,
+};
+use tracing_opentelemetry_instrumentation_sdk::http::{
+    http_flavor, http_host, http_method, url_scheme, user_agent,
 };
 use tracing_opentelemetry_instrumentation_sdk::otel_trace_span;
 

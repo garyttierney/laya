@@ -103,7 +103,7 @@ jobs:
           container=$(buildah from --platform ${{ matrix.docker }} scratch)
           buildah copy $container target/${{ matrix.triple }}/release/laya /bin/laya
           buildah config --entrypoint /bin/laya $container
-          buildah push --digestfile=/tmp/digest imageID docker://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          buildah push --digestfile=/tmp/digest $container docker://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Upload digest
         uses: actions/upload-artifact@v4

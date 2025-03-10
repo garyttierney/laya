@@ -91,6 +91,7 @@ jobs:
       - uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.triple }}
+
       - name: Build
         run: |
           mkdir artifacts
@@ -98,7 +99,7 @@ jobs:
           cp target/${{ matrix.triple }}/release/laya artifacts/laya-${{ matrix.name }}
         env:
           TARGET_CPU: ${{ matrix.cpu }}
-          RUSTC: share/rustc.wrap
+          RUSTFLAGS: "-Ctarget-cpu=${{ matrix.cpu }} -Ctarget-feature=+crt-static"
 
   build-containers:
     needs: plan

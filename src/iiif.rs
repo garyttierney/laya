@@ -1,46 +1,16 @@
+use std::num::NonZero;
+
+pub mod http;
 pub mod image;
 pub mod info;
 pub(crate) mod parse;
+pub mod service;
 
-use std::num::NonZero;
+use serde::Serialize;
+pub use service::ImageServiceRequest;
 
-#[derive(Debug, PartialEq)]
-pub enum IiifRequest {
-    Info {
-        identifier: String,
-    },
-    Image {
-        identifier: String,
-        region: Region,
-        size: Size,
-        rotation: Rotation,
-        quality: Quality,
-        format: Format,
-    },
-}
-
-impl IiifRequest {
-    pub fn info<S: Into<String>>(identifier: S) -> Self {
-        IiifRequest::Info { identifier: identifier.into() }
-    }
-
-    pub fn image<S: Into<String>>(
-        identifier: S,
-        region: Region,
-        size: Size,
-        rotation: Rotation,
-        quality: Quality,
-        format: Format,
-    ) -> IiifRequest {
-        IiifRequest::Image {
-            identifier: identifier.into(),
-            region,
-            size,
-            rotation,
-            quality,
-            format,
-        }
-    }
+pub trait ResourceType {
+    const NAME: &'static str;
 }
 
 pub type Dimension = u32;
@@ -165,7 +135,7 @@ mod test {
     fn decode_basic_info_request() {
         let request = "/abcd1234/info.json".parse();
 
-        assert_eq!(request, Ok(IiifRequest::info("abcd1234")));
+        assert_eq!(request, Ok(ImageServiceRequest::info("abcd1234")));
     }
 
     #[test]
@@ -174,7 +144,7 @@ mod test {
 
         assert_eq!(
             request,
-            Ok(IiifRequest::image(
+            Ok(ImageServiceRequest::image(
                 "abcd1234",
                 Region::Full,
                 Size::new(Scale::Max),
@@ -192,7 +162,7 @@ mod test {
 
         assert_eq!(
             request,
-            Ok(IiifRequest::image(
+            Ok(ImageServiceRequest::image(
                 "a/?#[]@%z",
                 Region::Full,
                 Size::new(Scale::Max),

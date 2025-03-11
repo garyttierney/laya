@@ -109,6 +109,11 @@ pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
                 .with_env_var("LAYA_LOG")
                 .from_env_lossy(),
         )
+        .with(match formatter.as_str() {
+            "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
+            "json" => tracing_subscriber::fmt::layer().json().boxed(),
+            _ => tracing_subscriber::fmt::layer().pretty().boxed(),
+        })
         .with(
             tracer_provider
                 .clone()
@@ -119,11 +124,6 @@ pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
                 .as_ref()
                 .map(OpenTelemetryTracingBridge::new),
         )
-        .with(match formatter.as_str() {
-            "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
-            "json" => tracing_subscriber::fmt::layer().json().boxed(),
-            _ => tracing_subscriber::fmt::layer().pretty().boxed(),
-        })
         .init();
 
     TelemetryHandle { rt, tracing_provider: tracer_provider.clone(), logger_provider }

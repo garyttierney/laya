@@ -1,4 +1,3 @@
-pub mod http;
 pub mod iiif;
 pub mod image;
 pub mod runtime;
@@ -10,11 +9,13 @@ use std::path::Path;
 use std::time::Duration;
 
 use clap::Parser;
-use http::IiifImageService;
+use http_body::Body;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
 use hyper::{Request, Response};
 use hyper_util::service::TowerToHyperService;
+use iiif::http::HttpImageService;
+use iiif::service::ImageService;
 use kaduceus::KakaduContext;
 use opentelemetry_http::HeaderExtractor;
 use runtime::tokio::TokioRuntime;
@@ -25,13 +26,12 @@ use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing::field::Empty;
-use tracing::info_span;
+use tracing::{info, info_span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_opentelemetry_instrumentation_sdk::http::http_server::update_span_from_response;
 use tracing_opentelemetry_instrumentation_sdk::http::{
     http_flavor, http_host, http_method, url_scheme, user_agent,
 };
-use tracing_opentelemetry_instrumentation_sdk::otel_trace_span;
 
 use crate::image::metadata::KaduceusImageReader;
 use crate::image::{ImagePipelineBuilder, LocalImageSourceResolver};
@@ -66,7 +66,9 @@ pub fn start<R: Runtime>(options: LayaOptions) {
         .with_locator(LocalImageSourceResolver::new("samples"))
         .with_reader(KaduceusImageReader::new(kdu_context))
         .build();
-    let image_service = IiifImageService::new_with_prefix(image_pipeline, &options.prefix);
+
+    let image_service = ImageService;
+    let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
 
     let svc = ServiceBuilder::new()
         .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))
@@ -74,24 +76,23 @@ pub fn start<R: Runtime>(options: LayaOptions) {
             TraceLayer::new_for_http()
                 .make_span_with(|req: &Request<Incoming>| {
                     let http_method = http_method(req.method());
-                    let span = otel_trace_span!(
-                        "HTTP request",
+
+                    let span = info_span!(
+                        "http_request",
                         http.request.method = %http_method,
                         network.protocol.version = %http_flavor(req.version()),
                         server.address = http_host(req),
-                        // server.port = req.uri().port(),
+                        server.port = ?req.uri().port(),
                         http.client.address = Empty, //%$request.connection_info().realip_remote_addr().unwrap_or(""),
                         user_agent.original = user_agent(req),
-                        http.response.status_code = Empty, // to set on response
+                        http.response.status_code = Empty,
                         url.path = req.uri().path(),
                         url.query = req.uri().query(),
                         url.scheme = url_scheme(req.uri()),
-                        otel.name = %http_method, // to set by router of "webframework" after
+                        otel.name = Empty,
                         otel.kind = ?opentelemetry::trace::SpanKind::Server,
-                        otel.status_code = Empty, // to set on response
-                        trace_id = Empty, // to set on response
-                        request_id = Empty, // to set
-                        exception.message = Empty, // to set on response
+                        otel.status_code = Empty,
+                        exception.message = Empty,
                     );
 
                     let extractor = HeaderExtractor(req.headers());
@@ -99,7 +100,6 @@ pub fn start<R: Runtime>(options: LayaOptions) {
                         propagator.extract(&extractor)
                     });
                     span.set_parent(context);
-
                     span
                 })
                 .on_response(|response: &Response<_>, _: Duration, span: &tracing::Span| {
@@ -107,9 +107,9 @@ pub fn start<R: Runtime>(options: LayaOptions) {
                 }),
         )
         .layer(TimeoutLayer::new(Duration::from_secs(10)))
-        .service(image_service);
+        .service(http_service);
 
-    R::bind(options, TowerToHyperService::new(svc));
+    R::bind(options, TowerToHyperService::new(svc))
 }
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]

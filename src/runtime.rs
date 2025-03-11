@@ -7,10 +7,12 @@ use hyper::body::{Bytes, Incoming};
 use hyper::rt::{Executor, Read, Timer, Write};
 use hyper::service::Service;
 use hyper::{Request, Response};
-use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass};
+use hyper_util::rt::{TokioIo, TokioTimer};
+use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass, StatusInRangeFailureClass};
 use tower_http::trace::ResponseBody;
+use tracing_subscriber::fmt::format::Full;
 
-use crate::LayaOptions;
+use crate::{LayaOptions, Options};
 
 #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
 pub mod glommio;
@@ -45,6 +47,7 @@ pub trait Runtime {
         E: Into<Box<dyn Error + Send + Sync>> + Send + Sync + Display + 'static;
 }
 
+#[tracing::instrument(skip_all, err)]
 async fn handle_connection<R, S, E>(
     io: R::Io,
     service: S,

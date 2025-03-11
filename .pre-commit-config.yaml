@@ -1,0 +1,37 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-byte-order-marker
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        exclude_types:
+          - rust
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        description: Format files with cargo fmt.
+        entry: cargo +nightly fmt --
+        language: system
+        files: \.rs$
+        args: []
+      - id: cargo-check
+        name: cargo check
+        description: Check the package for errors.
+        entry: cargo check
+        language: system
+        files: \.rs$
+        pass_filenames: false
+      - id: cargo-clippy
+        name: cargo clippy
+        description: Run the Clippy linter on the package.
+        entry: cargo clippy -- -D warnings -A unused
+        language: system
+        files: \.rs$
+        pass_filenames: false

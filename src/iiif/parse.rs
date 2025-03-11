@@ -3,8 +3,8 @@ use std::fmt::{Display, Formatter};
 use std::num::NonZero;
 use std::str::FromStr;
 
-use super::IiifRequest;
-use crate::http::IiifRequestError;
+use super::http::IiifRequestError;
+use super::ImageServiceRequest;
 use crate::iiif::{Dimension, Format, Quality, Region, Rotation, Scale, Size};
 
 const PERCENT_PREFIX: &str = "pct:";
@@ -30,7 +30,7 @@ impl FromStr for Region {
     }
 }
 
-impl FromStr for IiifRequest {
+impl FromStr for ImageServiceRequest {
     type Err = IiifRequestError;
 
     fn from_str(path: &str) -> Result<Self, Self::Err> {
@@ -49,7 +49,7 @@ impl FromStr for IiifRequest {
 
         let is_info_request = segments.peek().is_some_and(|s| *s == "info.json");
         if is_info_request {
-            return Ok(IiifRequest::Info { identifier: identifier.into() });
+            return Ok(ImageServiceRequest::Info { identifier: identifier.into() });
         }
 
         let region = segments
@@ -84,7 +84,7 @@ impl FromStr for IiifRequest {
             .parse::<Format>()
             .map_err(IiifRequestError::ParseError)?;
 
-        Ok(IiifRequest::image(identifier, region, size, rotation, quality, format))
+        Ok(ImageServiceRequest::image(identifier, region, size, rotation, quality, format))
     }
 }
 

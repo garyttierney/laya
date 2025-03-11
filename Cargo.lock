@@ -966,6 +966,7 @@ dependencies = [
 name = "laya"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "clap",
  "color-eyre",
  "futures",
@@ -984,7 +985,9 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "serde",
+ "serde_json",
  "tokio",
+ "tokio-util",
  "tower",
  "tower-http",
  "tracing",

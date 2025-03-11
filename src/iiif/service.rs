@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::fmt::Display;
 use std::future::Future;
-use std::pin::{self, Pin};
-use std::sync::{Arc, Mutex};
+use std::pin::Pin;
+use std::sync::Arc;
 use std::task::Poll;
 
 use futures::Stream;
@@ -13,7 +13,7 @@ use tower::Service;
 use super::http::IiifRequestError;
 use super::info::ImageInfo;
 use super::{Format, Quality, Region, Rotation, Size};
-use crate::image::{BoxedImage, Image, ImagePipeline, ImageReader};
+use crate::image::{Image, ImagePipeline, ImageReader};
 use crate::storage::StorageProvider;
 
 pub enum ImageServiceResponse {

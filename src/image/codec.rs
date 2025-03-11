@@ -1,13 +1,12 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::iiif::info::ImageInfo;
 use crate::storage::FileOrStream;
 
 mod kaduceus;
 pub use kaduceus::KaduceusImageReader;
 
-use super::{BoxedImage, Image};
+use super::BoxedImage;
 
 pub trait ImageReader {
     fn read<'a>(

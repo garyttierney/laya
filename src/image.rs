@@ -3,9 +3,8 @@ use std::ops::{Deref, DerefMut};
 
 pub use pipeline::{ImagePipeline, ImagePipelineBuilder};
 
-pub mod codecs;
-pub mod metadata;
-pub use metadata::ImageReader;
+pub mod codec;
+pub use codec::ImageReader;
 
 use crate::iiif::info::ImageInfo;
 

@@ -34,7 +34,7 @@ use tracing_opentelemetry_instrumentation_sdk::http::{
     http_flavor, http_host, http_method, url_scheme, user_agent,
 };
 
-use crate::image::metadata::KaduceusImageReader;
+use crate::image::codec::KaduceusImageReader;
 use crate::image::ImagePipelineBuilder;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

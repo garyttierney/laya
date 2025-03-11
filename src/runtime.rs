@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::future::Future;
-use std::sync::Arc;
 
 use http_body_util::combinators::BoxBody;
 use hyper::body::{Bytes, Incoming};

@@ -1,18 +1,19 @@
-use super::{ImageMetadataResolver, ImageSourceResolver};
+use super::ImageReader;
+use crate::storage::StorageProvider;
 
 #[derive(Default)]
-pub struct ImagePipelineBuilder<S: ImageSourceResolver, R: ImageMetadataResolver> {
-    locator: Option<S>,
+pub struct ImagePipelineBuilder<S: StorageProvider, R: ImageReader> {
+    storage: Option<S>,
     reader: Option<R>,
 }
 
-impl<L: ImageSourceResolver, R: ImageMetadataResolver> ImagePipelineBuilder<L, R> {
+impl<L: StorageProvider, R: ImageReader> ImagePipelineBuilder<L, R> {
     pub fn new() -> Self {
-        Self { locator: None, reader: None }
+        Self { storage: None, reader: None }
     }
 
-    pub fn with_locator(mut self, storage: L) -> Self {
-        self.locator = Some(storage);
+    pub fn with_storage(mut self, storage: L) -> Self {
+        self.storage = Some(storage);
         self
     }
 
@@ -23,14 +24,14 @@ impl<L: ImageSourceResolver, R: ImageMetadataResolver> ImagePipelineBuilder<L, R
 
     pub fn build(self) -> ImagePipeline<L, R> {
         ImagePipeline {
-            locator: self.locator.expect("no locator set"),
+            storage: self.storage.expect("no locator set"),
             reader: self.reader.expect("no reader set"),
         }
     }
 }
 
 #[allow(unused)]
-pub struct ImagePipeline<L: ImageSourceResolver, R: ImageMetadataResolver> {
-    locator: L,
-    reader: R,
+pub struct ImagePipeline<L: StorageProvider, R: ImageReader> {
+    pub(crate) storage: L,
+    pub(crate) reader: R,
 }

@@ -1,7 +1,6 @@
 use std::num::NonZero;
 
 pub mod http;
-pub mod image;
 pub mod info;
 pub(crate) mod parse;
 pub mod service;

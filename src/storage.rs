@@ -2,18 +2,31 @@ use std::error::Error;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 
 use futures::AsyncRead;
 
 pub mod opendal;
 
-pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncRead>>;
+pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncRead> + Send>;
 
 /// Provides storage for data identified by unique string identifiers.
 pub trait StorageProvider {
     /// Opens a handle to the random-access storage identified by the unique id `id`.
     /// The storage may point to an asynchronous stream, or a locally available file.
-    fn open(&self, id: &str) -> impl Future<Output = Result<FileOrStream, StorageError>> + Send;
+    fn open(
+        &self,
+        id: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send>>;
+}
+
+impl<T: StorageProvider> StorageProvider for Box<T> {
+    fn open(
+        &self,
+        id: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send>> {
+        T::open(self, id)
+    }
 }
 
 /// A path to a file encapsulated with a factory method that can provide an asynchronous stream if
@@ -39,7 +52,7 @@ pub enum FileOrStream {
     File(FileStream),
 
     /// Storage represented by a stream.
-    Stream(Box<dyn AsyncRead>),
+    Stream(Box<dyn AsyncRead + Send>),
 }
 
 impl FileOrStream {

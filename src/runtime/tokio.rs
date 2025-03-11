@@ -23,7 +23,7 @@ impl Runtime for TokioRuntime {
 
     fn executor<F>() -> impl hyper::rt::Executor<F> + Clone
     where
-        F: Future + Sync + Send + 'static,
+        F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
         TokioExecutor::new()
@@ -42,11 +42,10 @@ impl Runtime for TokioRuntime {
                 >,
             > + Clone
             + Send
-            + Sync
             + 'static,
         E: Into<Box<dyn Error + Send + Sync>> + Send + Sync + Display + 'static,
         S::Error: Error + Send + Sync + 'static,
-        S::Future: Send + Sync + 'static,
+        S::Future: Send + 'static,
     {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .thread_name("laya")

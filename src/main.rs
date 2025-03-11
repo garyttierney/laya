@@ -16,10 +16,12 @@ use hyper_util::service::TowerToHyperService;
 use iiif::http::HttpImageService;
 use iiif::service::ImageService;
 use kaduceus::KakaduContext;
+use opendal::services::Fs;
 use opentelemetry_http::HeaderExtractor;
 use runtime::tokio::TokioRuntime;
 use runtime::Runtime;
 use serde::{Deserialize, Serialize};
+use storage::opendal::OpenDalStorageProvider;
 use tower::ServiceBuilder;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
@@ -33,7 +35,7 @@ use tracing_opentelemetry_instrumentation_sdk::http::{
 };
 
 use crate::image::metadata::KaduceusImageReader;
-use crate::image::{ImagePipelineBuilder, LocalImageSourceResolver};
+use crate::image::ImagePipelineBuilder;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
@@ -61,12 +63,18 @@ pub struct Options {
 
 pub fn start<R: Runtime>(options: LayaOptions) {
     let kdu_context = KakaduContext::default();
+    let kdu_image_reader = KaduceusImageReader::new(kdu_context);
+
+    let storage = Fs::default().root("test-data");
+    let storage_provider =
+        OpenDalStorageProvider::new(storage).expect("failed to create storage provider");
+
     let image_pipeline = ImagePipelineBuilder::new()
-        .with_locator(LocalImageSourceResolver::new("samples"))
-        .with_reader(KaduceusImageReader::new(kdu_context))
+        .with_storage(storage_provider)
+        .with_reader(kdu_image_reader)
         .build();
 
-    let image_service = ImageService;
+    let image_service = ImageService::new(image_pipeline);
     let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
 
     let svc = ServiceBuilder::new()

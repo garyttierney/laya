@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::future::Future;
+use std::sync::Arc;
 
 use http_body_util::combinators::BoxBody;
 use hyper::body::{Bytes, Incoming};
@@ -24,7 +25,7 @@ pub trait Runtime {
 
     fn executor<F>() -> impl Executor<F> + Clone
     where
-        F: Future + Sync + Send + 'static,
+        F: Future + Send + 'static,
         F::Output: Send + 'static;
 
     fn timer() -> impl Timer + Send + Sync + Clone + 'static;
@@ -38,9 +39,8 @@ pub trait Runtime {
                 >,
             > + Clone
             + Send
-            + Sync
             + 'static,
-        S::Future: Send + Sync + 'static,
+        S::Future: Send + 'static,
         S::Error: Error + Send + Sync + 'static,
         E: Into<Box<dyn Error + Send + Sync>> + Send + Sync + Display + 'static;
 }
@@ -53,12 +53,12 @@ async fn handle_connection<R, S, E>(
 where
     R: Runtime,
     S: Service<
-        Request<Incoming>,
-        Response = Response<
-            ResponseBody<BoxBody<Bytes, E>, NeverClassifyEos<ServerErrorsFailureClass>>,
-        >,
-    >,
-    S::Future: Send + Sync + 'static,
+            Request<Incoming>,
+            Response = Response<
+                ResponseBody<BoxBody<Bytes, E>, NeverClassifyEos<ServerErrorsFailureClass>>,
+            >,
+        > + Send,
+    S::Future: Send + 'static,
     S::Error: Send + Sync + Error + 'static,
     E: Into<Box<dyn Error + Send + Sync>> + Sync + Display + 'static,
 {

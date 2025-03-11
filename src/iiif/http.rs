@@ -40,11 +40,11 @@ where
         + Sync
         + Clone
         + 'static,
-    S::Future: Send + Sync,
+    S::Future: Send + Unpin,
 {
     type Response = Response<BoxBody<Bytes, std::io::Error>>;
     type Error = hyper::http::Error;
-    type Future = Pin<Box<dyn Sync + Send + Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future = Pin<Box<dyn Send + Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn call(&mut self, req: Request<Incoming>) -> Self::Future {
         Box::pin(Self::decode_request(req, self.prefix.clone(), self.inner.clone()))
@@ -81,7 +81,7 @@ where
         + Sync
         + Clone
         + 'static,
-    S::Future: Send + Sync,
+    S::Future: Send,
 {
     pub async fn decode_request(
         req: Request<Incoming>,

@@ -73,7 +73,11 @@ hyper-util = { version = "0.1", features = [
     "http1",
     "tokio",
 ] }
-opendal = { version = "0.52", optional = true }
+opendal = { version = "0.52", optional = true, features = [
+    "layers-tracing",
+    "services-s3",
+    "services-fs",
+] }
 opentelemetry = { version = "0.28", features = ["trace", "metrics"] }
 opentelemetry-appender-tracing = { version = "0.28", features = [
     "tracing-opentelemetry",

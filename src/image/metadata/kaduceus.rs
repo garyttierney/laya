@@ -1,9 +1,11 @@
 use std::future::Future;
+use std::pin::Pin;
 
-use kaduceus::KakaduContext;
+use kaduceus::{KakaduContext, KakaduImage};
 
-use super::ImageMetadataResolver;
+use super::ImageReader;
 use crate::iiif::info::ImageInfo;
+use crate::image::{BoxedImage, Image};
 use crate::storage::FileOrStream;
 
 pub struct KaduceusImageReader {
@@ -16,9 +18,30 @@ impl KaduceusImageReader {
     }
 }
 
-impl ImageMetadataResolver for KaduceusImageReader {
-    fn info<'a>(&'a self, location: FileOrStream) -> Box<dyn Future<Output = ImageInfo> + 'a> {
-        Box::new(async move {
+impl Image for KakaduImage {
+    fn info(&mut self) -> ImageInfo {
+        let info = KakaduImage::info(self);
+
+        ImageInfo {
+            width: info.width,
+            height: info.height,
+            max_width: Some(info.width),
+            max_height: Some(info.height),
+            max_area: None,
+            sizes: None,
+            tiles: None,
+            preferred_formats: None,
+            rights: None,
+        }
+    }
+}
+
+impl ImageReader for KaduceusImageReader {
+    fn read<'a>(
+        &'a self,
+        location: FileOrStream,
+    ) -> Pin<Box<dyn Future<Output = BoxedImage> + Send + 'a>> {
+        Box::pin(async move {
             let stream = match location {
                 FileOrStream::File(path) => {
                     todo!()
@@ -26,10 +49,7 @@ impl ImageMetadataResolver for KaduceusImageReader {
                 FileOrStream::Stream(reader) => Box::into_pin(reader),
             };
 
-            // let mut reader = KakaduImageReader::new(self.context.clone(), stream, None);
-            // let kdu_info = reader.info();
-
-            todo!()
+            KakaduImage::new(self.context.clone(), stream, None).boxed()
         })
     }
 }

@@ -18,7 +18,7 @@ jobs:
     name: Run tests
     runs-on: ubuntu-24.04
     permissions:
-      id-token: write    
+      id-token: write
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -43,13 +43,13 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest, cargo-llvm-cov
-          
+
       - name: Run tests
         run: |
           pip install iiif-validator
 
           cargo llvm-cov nextest
-          cargo llvm-cov run -- --prefix=/prefix/ & pid=$! 
+          cargo llvm-cov run -- --prefix=/prefix/ & pid=$!
 
           if curl --retry 5 --retry-delay 2 --retry-connrefused --silent --show-error --fail http://localhost:43594/ | grep -q 'OK!'; then
             iiif-validate.py -s localhost:43594 -p prefix -i image_id --version=2.0 -v || true
@@ -71,18 +71,18 @@ jobs:
     name: Check dependencies
     runs-on: ubuntu-24.04
     permissions:
-      id-token: write    
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: true
-     
+
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
       - run: cargo deny check
-  
+
   clippy:
     name: Clippy
     runs-on: ubuntu-24.04
@@ -105,7 +105,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-         
+
       - uses: taiki-e/install-action@v2
         with:
           tool: clippy-sarif, sarif-fmt
@@ -121,7 +121,7 @@ jobs:
     name: Formatting
     runs-on: ubuntu-24.04
     permissions:
-      id-token: write    
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -133,7 +133,7 @@ jobs:
           ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
           repository: digirati-co-uk/kakadu
           path: kakadu
-          
+
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt

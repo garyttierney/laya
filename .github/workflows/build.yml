@@ -73,7 +73,7 @@ jobs:
     steps:
       - name: Install buildah
         run: sudo apt install -y buildah
-        if: endsWith(matrix.runner, 'arm') 
+        if: endsWith(matrix.runner, 'arm')
 
       - uses: actions/checkout@v4
         with:
@@ -128,7 +128,7 @@ jobs:
 
           image=$(buildah commit $container)
           buildah push --digestfile=/tmp/digest $image docker://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          
+
           digest=$(</tmp/digest)
           echo "digest=$digest" >> $GITHUB_OUTPUT
 
@@ -157,7 +157,7 @@ jobs:
     name: Merge Docker manifests
     runs-on: ubuntu-24.04
     permissions:
-      id-token: write    
+      id-token: write
     needs:
       - build-native
     steps:
@@ -197,7 +197,7 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)          
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |

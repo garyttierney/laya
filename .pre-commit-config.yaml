@@ -8,6 +8,8 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: end-of-file-fixer
+        exclude_types:
+          - rust
       - id: mixed-line-ending
       - id: trailing-whitespace
         exclude_types:

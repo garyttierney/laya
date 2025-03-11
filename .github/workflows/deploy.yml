@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [Build artifacts]
     types: [completed]
-  
+
 jobs:
   on-success:
     concurrency:
@@ -37,4 +37,3 @@ jobs:
         ECS_CLUSTER: dlcs
       run: |
           aws ecs wait services-stable --cluster $ECS_CLUSTER --service dlcsspinup-laya
-      

@@ -1,6 +1,6 @@
 # Laya: efficient standards-based image API 💅
 
-Laya is a work-in-progress server implementation of the [IIIF Image API](https://iiif.io/api/image/3.0/) (version 
+Laya is a work-in-progress server implementation of the [IIIF Image API](https://iiif.io/api/image/3.0/) (version
 3.0) with an emphasis on safety, performance, and spec-conformance.
 
 ### Users

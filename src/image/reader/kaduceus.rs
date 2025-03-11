@@ -2,10 +2,9 @@ use std::future::Future;
 
 use kaduceus::{KakaduContext, KakaduImageReader};
 
+use super::ImageReader;
 use crate::iiif::info::ImageInfo;
 use crate::image::{FileOrStream, Image, ImageMetadata};
-
-use super::ImageReader;
 
 pub struct KaduceusImageReader {
     context: KakaduContext,
@@ -24,7 +23,10 @@ impl Image for KaduceusImage {
 impl ImageReader for KaduceusImageReader {
     type ImageType = KaduceusImage;
 
-    fn read<'a>(&'a self, location: FileOrStream) -> Box<dyn Future<Output = Self::ImageType> + 'a> {
+    fn read<'a>(
+        &'a self,
+        location: FileOrStream,
+    ) -> Box<dyn Future<Output = Self::ImageType> + 'a> {
         Box::new(async move {
             let mut stream = match location {
                 FileOrStream::File(path) => {

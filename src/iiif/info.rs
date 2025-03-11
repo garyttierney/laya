@@ -1,6 +1,3 @@
-use serde::Serialize;
-use serde_json::{json, Value};
-
 use crate::iiif::Dimension;
 
 #[allow(unused)]

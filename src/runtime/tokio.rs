@@ -10,7 +10,7 @@ use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use tokio::net::{TcpListener, TcpStream};
 use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass};
 use tower_http::trace::ResponseBody;
-use tracing::{info, info_span, Instrument};
+use tracing::info;
 
 use super::{handle_connection, Runtime};
 use crate::LayaOptions;

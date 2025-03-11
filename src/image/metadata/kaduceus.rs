@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use kaduceus::{KakaduContext, KakaduImageReader};
+use kaduceus::KakaduContext;
 
 use super::ImageMetadataResolver;
 use crate::iiif::info::ImageInfo;
@@ -26,8 +26,8 @@ impl ImageMetadataResolver for KaduceusImageReader {
                 FileOrStream::Stream(reader) => Box::into_pin(reader),
             };
 
-            let mut reader = KakaduImageReader::new(self.context.clone(), stream, None);
-            let kdu_info = reader.info();
+            // let mut reader = KakaduImageReader::new(self.context.clone(), stream, None);
+            // let kdu_info = reader.info();
 
             todo!()
         })

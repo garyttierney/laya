@@ -1,8 +1,9 @@
 use std::error::Error;
 use std::fmt::Display;
+use std::future::Future;
 use std::path::Path;
 
-use tokio::io::AsyncRead;
+use futures::AsyncRead;
 
 pub mod opendal;
 
@@ -12,7 +13,7 @@ pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncRead>>;
 pub trait StorageProvider {
     /// Opens a handle to the random-access storage identified by the unique id `id`.
     /// The storage may point to an asynchronous stream, or a locally available file.
-    fn open(id: &str) -> Result<FileOrStream, StorageError>;
+    fn open(&self, id: &str) -> impl Future<Output = Result<FileOrStream, StorageError>> + Send;
 }
 
 /// A path to a file encapsulated with a factory method that can provide an asynchronous stream if

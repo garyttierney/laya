@@ -6,7 +6,6 @@ pub mod info;
 pub(crate) mod parse;
 pub mod service;
 
-use serde::Serialize;
 pub use service::ImageServiceRequest;
 
 pub trait ResourceType {

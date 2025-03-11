@@ -2,26 +2,21 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::Poll;
 
-use bytes::{BufMut, BytesMut};
 use futures::{Stream, StreamExt};
 use http_body::Frame;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full, StreamBody};
 use hyper::body::{Bytes, Incoming};
 use hyper::{Request, Response, StatusCode};
-use opendal::raw::HttpBody;
 use serde_json::{json, to_string_pretty, Value};
 use tower::Service;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-use super::service::{ImageService, ImageServiceError, ImageServiceResponse};
+use super::service::{ImageServiceError, ImageServiceResponse};
 use crate::iiif::info::ImageInfo;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
 use crate::iiif::ImageServiceRequest;
-use crate::image::{ImageMetadataResolver, ImagePipeline, ImageSourceResolver};
 
 #[derive(Clone)]
 pub struct HttpImageService<S>

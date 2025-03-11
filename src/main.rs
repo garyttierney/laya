@@ -9,7 +9,6 @@ use std::path::Path;
 use std::time::Duration;
 
 use clap::Parser;
-use http_body::Body;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
 use hyper::{Request, Response};
@@ -26,7 +25,7 @@ use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing::field::Empty;
-use tracing::{info, info_span};
+use tracing::info_span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_opentelemetry_instrumentation_sdk::http::http_server::update_span_from_response;
 use tracing_opentelemetry_instrumentation_sdk::http::{

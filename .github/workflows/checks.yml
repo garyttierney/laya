@@ -68,8 +68,12 @@ jobs:
           fi
           cargo llvm-cov report --lcov --output-path lcov.info
           cargo llvm-cov report --html
+
+          aws s3 cp s3://digirati-ci-artifacts/digirati-co-uk/main/llvm-cov target/llvm-cov
         env:
           CARGO_TERM_COLOR: always
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
 
       - name: Upload coverage report
         id: deployment

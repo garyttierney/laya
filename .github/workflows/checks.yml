@@ -70,7 +70,7 @@ jobs:
           path: target/llvm-cov
 
       - name: Archive arifacts
-        uses: digirati-co-uk/digirati-ops/.github/actions/archive-artifacts@main
+        uses: digirati-co-uk/digirati-ops-actions/.github/actions/archive-artifacts@main
 
   cargo-deny:
     name: Check dependencies

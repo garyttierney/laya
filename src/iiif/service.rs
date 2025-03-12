@@ -8,13 +8,15 @@ use std::task::Poll;
 use futures::Stream;
 use hyper::body::Incoming;
 use hyper::Request;
+use kaduceus::{KakaduContext, KakaduImage};
 use tower::Service;
+use tracing::info;
 
 use super::http::IiifRequestError;
 use super::info::ImageInfo;
 use super::{Format, Quality, Region, Rotation, Size};
 use crate::image::{Image, ImagePipeline, ImageReader};
-use crate::storage::StorageProvider;
+use crate::storage::{FileOrStream, StorageProvider};
 
 pub enum ImageServiceResponse {
     Info(ImageInfo),
@@ -111,8 +113,20 @@ impl Service<ImageServiceRequest> for ImageService {
             match req {
                 ImageServiceRequest::Info { identifier } => {
                     let data = storage.lock().await.open(&identifier).await.unwrap();
-                    let mut image = reader.read(data).await;
-                    let info = image.info();
+                    let stream = match data {
+                        FileOrStream::File(path) => {
+                            todo!()
+                        }
+                        FileOrStream::Stream(reader) => Box::into_pin(reader),
+                    };
+
+                    info!(identifier = identifier, "Found storage for image");
+
+                    let mut image = tokio::task::spawn_blocking(|| {
+                        KakaduImage::new(KakaduContext::default(), stream, None).boxed()
+                    });
+
+                    let info = image.await.expect("failed to read image").info();
 
                     Ok(ImageServiceResponse::Info(info))
                 }

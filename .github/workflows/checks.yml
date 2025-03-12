@@ -26,6 +26,15 @@ jobs:
           submodules: recursive
           persist-credentials: true
 
+      - name: "Authenticate to AWS"
+        uses: catnekaise/cognito-idpool-auth@main
+        with:
+          auth-flow: "enhanced"
+          cognito-identity-pool-id: "eu-west-1:48b1e5ba-eed1-47f9-b45e-a4b27a2798c3"
+          aws-account-id: "144289631794"
+          aws-region: "eu-west-1"
+          set-in-environment: true
+
       - uses: actions/checkout@v4
         with:
           ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
@@ -67,6 +76,9 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: target/llvm-cov/html
+
+
+
   cargo-deny:
     name: Check dependencies
     runs-on: ubuntu-24.04

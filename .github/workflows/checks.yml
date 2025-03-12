@@ -26,15 +26,6 @@ jobs:
           submodules: recursive
           persist-credentials: true
 
-      - name: "Authenticate to AWS"
-        uses: catnekaise/cognito-idpool-auth@main
-        with:
-          auth-flow: "enhanced"
-          cognito-identity-pool-id: "eu-west-1:48b1e5ba-eed1-47f9-b45e-a4b27a2798c3"
-          aws-account-id: "144289631794"
-          aws-region: "eu-west-1"
-          set-in-environment: true
-
       - uses: actions/checkout@v4
         with:
           ssh-key: ${{ secrets.KAKADU_SSH_KEY }}
@@ -69,19 +60,17 @@ jobs:
           cargo llvm-cov report --lcov --output-path lcov.info
           cargo llvm-cov report --html
 
-          aws s3 cp --recursive target/llvm-cov s3://digirati-ci-artifacts/digirati-co-uk/laya/main/llvm-cov
         env:
           CARGO_TERM_COLOR: always
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
-
       - name: Upload coverage report
-        id: deployment
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-artifact@v3
         with:
-          path: target/llvm-cov/html
+          path: target/llvm-cov
 
-
+      - name: Archive arifacts
+        uses: digirati-co-uk/digirati-ops/.github/actions/archive-artifacts@main
 
   cargo-deny:
     name: Check dependencies

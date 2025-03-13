@@ -8,8 +8,10 @@ use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_aws::trace::{XrayIdGenerator, XrayPropagator};
 use opentelemetry_otlp::LogExporter;
 use opentelemetry_resource_detectors::{OsResourceDetector, ProcessResourceDetector};
+use opentelemetry_sdk::logs::log_processor_with_async_runtime::BatchLogProcessor;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::resource::EnvResourceDetector;
+use opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor;
 use opentelemetry_sdk::trace::{Sampler, SdkTracerProvider};
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_semantic_conventions::resource::SERVICE_VERSION;
@@ -17,6 +19,7 @@ use tokio::runtime::Runtime;
 use tracing::Level;
 use tracing_error::ErrorLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer};
@@ -72,11 +75,11 @@ pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
             .unwrap();
 
         let tracer_provider = SdkTracerProvider::builder()
-        .with_sampler(Sampler::AlwaysOn)
-        .with_id_generator(XrayIdGenerator::default())
-        .with_resource(resource())
-        .with_span_processor(opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(exporter, runtime::Tokio).build())
-        .build();
+            .with_sampler(Sampler::AlwaysOn)
+            .with_id_generator(XrayIdGenerator::default())
+            .with_resource(resource())
+            .with_span_processor(BatchSpanProcessor::builder(exporter, runtime::Tokio).build())
+            .build();
 
         let log_exporter = LogExporter::builder()
             .with_http()
@@ -84,36 +87,32 @@ pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
             .expect("Failed to create log exporter");
 
         let logger_provider = SdkLoggerProvider::builder()
-        .with_resource(resource())
-        .with_log_processor(
-            opentelemetry_sdk::logs::log_processor_with_async_runtime::BatchLogProcessor::builder(
-                log_exporter,
-                runtime::Tokio,
-            )
-            .build(),
-        )
-        .build();
+            .with_resource(resource())
+            .with_log_processor(BatchLogProcessor::builder(log_exporter, runtime::Tokio).build())
+            .build();
 
         (Some(tracer_provider), Some(logger_provider))
     } else {
         (None, None)
     };
 
-    let formatter = std::env::var("LAYA_LOG_FORMATTER").unwrap_or("compact".into());
+    let formatter = std::env::var("LAYA_LOG_FORMATTER").unwrap_or("pretty".into());
+    let formatting_layer = tracing_subscriber::fmt::layer();
 
     tracing_subscriber::registry()
+        .with(match formatter.as_str() {
+            "compact" => formatting_layer.compact().boxed(),
+            "json" => formatting_layer.json().boxed(),
+            _ => formatting_layer.pretty().boxed(),
+        })
         .with(ErrorLayer::default())
         .with(
             EnvFilter::builder()
                 .with_default_directive(Level::INFO.into())
                 .with_env_var("LAYA_LOG")
-                .from_env_lossy(),
+                .from_env_lossy()
+                .add_directive("opendal=debug".parse().unwrap()),
         )
-        .with(match formatter.as_str() {
-            "compact" => tracing_subscriber::fmt::layer().compact().boxed(),
-            "json" => tracing_subscriber::fmt::layer().json().boxed(),
-            _ => tracing_subscriber::fmt::layer().pretty().boxed(),
-        })
         .with(
             tracer_provider
                 .clone()

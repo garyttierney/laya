@@ -90,7 +90,7 @@ pub fn start<R: Runtime>(options: LayaOptions) {
                         network.protocol.version = %http_flavor(req.version()),
                         server.address = http_host(req),
                         server.port = ?req.uri().port(),
-                        http.client.address = Empty, //%$request.connection_info().realip_remote_addr().unwrap_or(""),
+                        http.client.address = Empty,
                         user_agent.original = user_agent(req),
                         http.response.status_code = Empty,
                         url.path = req.uri().path(),

@@ -1,4 +1,4 @@
-edition = "2021"
+edition = "2024"
 newline_style = "Unix"
 
 reorder_imports = true
@@ -15,3 +15,6 @@ struct_variant_width = 80
 comment_width = 100
 normalize_comments = true
 wrap_comments = true
+
+error_on_unformatted = true
+error_on_line_overflow = true

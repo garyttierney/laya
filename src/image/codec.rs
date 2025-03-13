@@ -8,7 +8,7 @@ pub use kaduceus::KaduceusImageReader;
 
 use super::BoxedImage;
 
-pub trait ImageReader {
+pub trait ImageReader: Send + Sync {
     fn read<'a>(
         &'a self,
         location: FileOrStream,

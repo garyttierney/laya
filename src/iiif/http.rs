@@ -5,15 +5,16 @@ use std::pin::Pin;
 use std::task::Poll;
 
 use futures::{Stream, StreamExt};
-use http_body::Frame;
+use http_body::{Body, Frame};
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full, StreamBody};
 use hyper::body::{Bytes, Incoming};
 use hyper::{Request, Response, StatusCode};
 use serde_json::{json, to_string_pretty, Value};
 use tower::Service;
+use tracing::error;
 
-use super::service::{ImageServiceError, ImageServiceResponse};
+use super::service::{ImageServiceError, ImageServiceRequestKind, ImageServiceResponse};
 use crate::iiif::info::ImageInfo;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
 use crate::iiif::ImageServiceRequest;
@@ -74,6 +75,10 @@ impl Stream for BytesStream {
 type HttpImageServiceBody = BoxBody<Bytes, std::io::Error>;
 type HttpImageServiceResponse = Response<HttpImageServiceBody>;
 
+const IMAGE_REQUEST_ROUTE: &str =
+    "/<prefix>/<identifier>/<region>/<size>/<rotation>/<quality>.<format>";
+const INFO_REQUEST_ROUTE: &str = "/<prefix>/<identifier>/info.json";
+
 impl<S> HttpImageService<S>
 where
     S: Service<ImageServiceRequest, Response = ImageServiceResponse, Error = ImageServiceError>
@@ -95,92 +100,107 @@ where
             .to_string();
 
         let request_span = tracing::Span::current();
+        let request = match request_path.as_str() {
+            "/" => return ok_response("OK!"),
+            _ => request_path.parse(),
+        };
 
-        match request_path.as_str() {
-            "/" => ok_response("OK!"),
-            _ => {
-                match request_path.parse() {
-                    Ok(request) => {
-                        let route = match &request {
-                        ImageServiceRequest::Info { .. } => "/<prefix>/<identifier>/info.json",
-                        ImageServiceRequest::Image { .. } => "/<prefix>/<identifier>/<region>/<size>/<rotation>/<quality>.<format>",
-                    };
-
-                        request_span.record("otel.name", format!("{} {route}", req.method()));
-
-                        match inner.call(request).await {
-                            Ok(ImageServiceResponse::Image(image)) => {
-                                let body = StreamBody::new(
-                                    BytesStream(image).map(|data| Ok(Frame::data(data))),
-                                );
-
-                                Response::builder()
-                                    .status(StatusCode::OK)
-                                    .body(BodyExt::boxed(body))
-                            }
-                            Ok(ImageServiceResponse::Info(info)) => info_response(info),
-                            Err(_) => todo!(),
-                        }
+        match request {
+            Ok(request) => {
+                let route = match &request {
+                    ImageServiceRequest { kind: ImageServiceRequestKind::Info, .. } => {
+                        INFO_REQUEST_ROUTE
                     }
-                    Err(e) => Response::builder().status(StatusCode::BAD_REQUEST).body(
-                        Full::new(e.to_string().into())
-                            .map_err(|_| unreachable!())
-                            .boxed(),
-                    ),
+                    ImageServiceRequest { kind: ImageServiceRequestKind::Image(..), .. } => {
+                        IMAGE_REQUEST_ROUTE
+                    }
+                };
+
+                request_span.record("otel.name", format!("{} {route}", req.method()));
+
+                match inner.call(request).await {
+                    Ok(response) => response.try_into(),
+                    Err(e) => {
+                        error!("failed to handle an image service request: {e:?}");
+
+                        Response::builder()
+                            .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(text_body("An internal error occurred"))
+                    }
                 }
             }
+            Err(e) => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(text_body(e.to_string())),
         }
     }
 }
 
-fn info_response(info: ImageInfo) -> Result<HttpImageServiceResponse, hyper::http::Error> {
-    let mut document = json!({
-        "@context": "http://iiif.io/api/image/3/context.json",
-        "type": "ImageService3",
-        "protocol": "http://iiif.io/api/image",
-        "profile": "level0",
-        "width": info.width,
-        "height": info.height,
-    });
+impl TryInto<HttpImageServiceResponse> for ImageServiceResponse {
+    type Error = hyper::http::Error;
 
-    if let Some(sizes) = &info.sizes {
-        let sizes_documents: Vec<Value> = sizes
-            .iter()
-            .map(|size| {
-                json!({
-                    "type": "Size",
-                    "width": size.width,
-                    "height": size.height,
-                })
-            })
-            .collect();
+    fn try_into(self) -> Result<HttpImageServiceResponse, Self::Error> {
+        match self {
+            ImageServiceResponse::Image(image) => {
+                let body =
+                    StreamBody::new(BytesStream(image.data).map(|data| Ok(Frame::data(data))));
 
-        document["sizes"] = json!(sizes_documents)
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", image.media_type.canonicalize().to_string())
+                    .body(BodyExt::boxed(body))
+            }
+            ImageServiceResponse::Info(info) => {
+                let mut document = json!({
+                    "@context": "http://iiif.io/api/image/3/context.json",
+                    "type": "ImageService3",
+                    "protocol": "http://iiif.io/api/image",
+                    "profile": "level0",
+                    "width": info.width,
+                    "height": info.height,
+                });
+
+                if let Some(sizes) = &info.sizes {
+                    let sizes_documents: Vec<Value> = sizes
+                        .iter()
+                        .map(|size| {
+                            json!({
+                                "type": "Size",
+                                "width": size.width,
+                                "height": size.height,
+                            })
+                        })
+                        .collect();
+
+                    document["sizes"] = json!(sizes_documents)
+                }
+
+                if let Some(tiles) = &info.tiles {
+                    let tile_documents: Vec<Value> = tiles
+                        .iter()
+                        .map(|tile| {
+                            json!({
+                                "type": "Tile",
+                                "width": tile.width,
+                                "height": tile.height,
+                                "scaleFactors": tile.scale_factors
+                            })
+                        })
+                        .collect();
+
+                    document["tiles"] = json!(tile_documents);
+                }
+
+                if let Some(rights) = &info.rights {
+                    document["rights"] = json!(rights);
+                }
+
+                to_string_pretty(&document)
+                    .map(ok_response)
+                    .expect("failed to serialize info.json")
+            }
+        }
     }
-
-    if let Some(tiles) = &info.tiles {
-        let tile_documents: Vec<Value> = tiles
-            .iter()
-            .map(|tile| {
-                json!({
-                    "type": "Tile",
-                    "width": tile.width,
-                    "height": tile.height,
-                    "scaleFactors": tile.scale_factors
-                })
-            })
-            .collect();
-
-        document["tiles"] = json!(tile_documents);
-    }
-
-    if let Some(rights) = &info.rights {
-        document["rights"] = json!(rights);
-    }
-
-    let json = to_string_pretty(&document).expect("failed to serialize image info document");
-
-    ok_response(json)
 }
 
 pub fn text_body<S: Into<String>>(body: S) -> HttpImageServiceBody {
@@ -240,20 +260,4 @@ impl From<ImageRequestParseError> for IiifRequestError {
     fn from(value: ImageRequestParseError) -> Self {
         IiifRequestError::ParseError(value)
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum InfoRequestError {}
-
-#[tracing::instrument(ret, err)]
-fn info_request(id: &str) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
-    unimplemented!()
-}
-
-fn bad_request<I: Into<Bytes>>(
-    body: I,
-) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
-    Response::builder()
-        .status(StatusCode::BAD_REQUEST)
-        .body(Full::new(body.into()).map_err(|e| match e {}).boxed())
 }

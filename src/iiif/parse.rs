@@ -44,12 +44,12 @@ impl FromStr for ImageServiceRequest {
             .next()
             .ok_or(IiifRequestError::UriMissingElement("identifier"))
             .and_then(|input| {
-                urlencoding::decode(input).map_err(|err| IiifRequestError::UriNotUtf8("identifier"))
+                urlencoding::decode(input).map_err(|_| IiifRequestError::UriNotUtf8("identifier"))
             })?;
 
         let is_info_request = segments.peek().is_some_and(|s| *s == "info.json");
         if is_info_request {
-            return Ok(ImageServiceRequest::Info { identifier: identifier.into() });
+            return Ok(ImageServiceRequest::info(identifier));
         }
 
         let region = segments
@@ -129,7 +129,9 @@ impl SpatialSelector for f32 {
 impl SpatialSelector for u32 {
     fn validate(value: Self, index: usize) -> Result<Self, ParseError> {
         // Image API 3.0, s 4.1: If the requested region’s height or width is zero, [fail].
-        if index <= 1 /* x or y */ || value > 0 {
+
+        // x or y
+        if index <= 1 || value > 0 {
             Ok(value)
         } else {
             Err(ParseError::RegionSelectorOutOfBounds { input: value.to_string(), index })

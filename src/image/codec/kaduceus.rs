@@ -2,12 +2,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use kaduceus::{KakaduContext, KakaduImage};
+use kaduceus::{KakaduContext, KakaduDecompressor, KakaduImage};
+use mediatype::names::{IMAGE, JP2};
+use mediatype::MediaTypeBuf;
 use tokio::runtime::{Builder, Runtime};
 
 use super::ImageReader;
 use crate::iiif::info::{ImageInfo, PreferredSize, Tile};
-use crate::image::{BoxedImage, Image};
+use crate::iiif::Region;
+use crate::image::{BoxedImage, Image, ImageDecoder, ImageStream};
 use crate::storage::FileOrStream;
 
 pub struct KaduceusImageReader {
@@ -54,6 +57,20 @@ impl Image for KakaduImage {
             preferred_formats: None,
             rights: None,
         }
+    }
+
+    fn open_region(&mut self, region: Region) -> Box<dyn ImageDecoder> {
+        todo!()
+    }
+}
+
+pub struct KaduceusImageDecoder {}
+
+impl ImageDecoder for KaduceusImageDecoder {
+    fn decode(self) -> ImageStream {
+        let media_type = MediaTypeBuf::new(IMAGE, JP2);
+
+        ImageStream { media_type, data: todo!() }
     }
 }
 

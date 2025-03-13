@@ -11,7 +11,7 @@ pub mod opendal;
 pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncRead> + Send>;
 
 /// Provides storage for data identified by unique string identifiers.
-pub trait StorageProvider {
+pub trait StorageProvider: Send + Sync {
     /// Opens a handle to the random-access storage identified by the unique id `id`.
     /// The storage may point to an asynchronous stream, or a locally available file.
     fn open(
@@ -68,7 +68,7 @@ impl FileOrStream {
 #[derive(Debug)]
 pub enum StorageError {
     AccessDenied,
-    NotFound(String),
+    NotFound,
     Other(String),
 }
 
@@ -78,7 +78,7 @@ impl Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageError::AccessDenied => write!(f, "access was denied"),
-            StorageError::NotFound(id) => write!(f, "data identified by '{id}' could not be found"),
+            StorageError::NotFound => write!(f, "data could not be found"),
             StorageError::Other(reason) => write!(f, "other: {reason}"),
         }
     }

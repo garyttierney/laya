@@ -5,37 +5,45 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 
-use futures::Stream;
+use bytes::BytesMut;
+use futures::{SinkExt, Stream};
 use hyper::body::Incoming;
 use hyper::Request;
-use kaduceus::{KakaduContext, KakaduImage};
+use kaduceus::KakaduContext;
+use tokio::sync::mpsc;
 use tower::Service;
 use tracing::info;
 
 use super::http::IiifRequestError;
 use super::info::ImageInfo;
 use super::{Format, Quality, Region, Rotation, Size};
-use crate::image::{Image, ImagePipeline, ImageReader};
-use crate::storage::{FileOrStream, StorageProvider};
+use crate::image::{BoxedImage, Image, ImagePipeline, ImageReader, ImageStream};
+use crate::storage::{FileOrStream, StorageError, StorageProvider};
 
 pub enum ImageServiceResponse {
     Info(ImageInfo),
-    Image(Box<dyn Stream<Item = bytes::Bytes> + Unpin + Send + Sync>),
+    Image(ImageStream),
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ImageServiceRequest {
-    Info {
-        identifier: String,
-    },
-    Image {
-        identifier: String,
-        region: Region,
-        size: Size,
-        rotation: Rotation,
-        quality: Quality,
-        format: Format,
-    },
+pub struct ImageServiceRequest {
+    pub(crate) identifier: String,
+    pub(crate) kind: ImageServiceRequestKind,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ImageServiceRequestKind {
+    Info,
+    Image(ImageParameters),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ImageParameters {
+    region: Region,
+    size: Size,
+    rotation: Rotation,
+    quality: Quality,
+    format: Format,
 }
 
 impl TryFrom<&Request<Incoming>> for ImageServiceRequest {
@@ -49,7 +57,7 @@ impl TryFrom<&Request<Incoming>> for ImageServiceRequest {
 
 impl ImageServiceRequest {
     pub fn info<S: Into<String>>(identifier: S) -> Self {
-        ImageServiceRequest::Info { identifier: identifier.into() }
+        ImageServiceRequest { identifier: identifier.into(), kind: ImageServiceRequestKind::Info }
     }
 
     pub fn image<S: Into<String>>(
@@ -59,20 +67,24 @@ impl ImageServiceRequest {
         rotation: Rotation,
         quality: Quality,
         format: Format,
-    ) -> ImageServiceRequest {
-        ImageServiceRequest::Image {
+    ) -> Self {
+        ImageServiceRequest {
             identifier: identifier.into(),
-            region,
-            size,
-            rotation,
-            quality,
-            format,
+            kind: ImageServiceRequestKind::Image(ImageParameters {
+                region,
+                size,
+                rotation,
+                quality,
+                format,
+            }),
         }
     }
 }
 
 #[derive(Debug)]
-pub enum ImageServiceError {}
+pub enum ImageServiceError {
+    Storage(StorageError),
+}
 
 impl Error for ImageServiceError {}
 impl Display for ImageServiceError {
@@ -83,17 +95,17 @@ impl Display for ImageServiceError {
 
 #[derive(Clone)]
 pub struct ImageService {
-    storage: Arc<tokio::sync::Mutex<dyn StorageProvider + Send + Sync>>,
-    reader: Arc<dyn ImageReader + Send + Sync>,
+    storage: Arc<dyn StorageProvider>,
+    reader: Arc<dyn ImageReader>,
 }
 
 impl ImageService {
     pub fn new<S, R>(pipeline: ImagePipeline<S, R>) -> ImageService
     where
-        S: StorageProvider + Send + Sync + 'static,
+        S: StorageProvider + 'static,
         R: ImageReader + Send + Sync + 'static,
     {
-        let storage = Arc::new(tokio::sync::Mutex::new(pipeline.storage));
+        let storage = Arc::new(pipeline.storage);
         let reader = Arc::new(pipeline.reader);
 
         Self { storage, reader }
@@ -110,22 +122,19 @@ impl Service<ImageServiceRequest> for ImageService {
         let reader = self.reader.clone();
 
         Box::pin(async move {
-            match req {
-                ImageServiceRequest::Info { identifier } => {
-                    let data = storage.lock().await.open(&identifier).await.unwrap();
-                    let mut image = reader.read(data).await;
-                    let info = image.info();
+            let data = storage
+                .open(&req.identifier)
+                .await
+                .map_err(ImageServiceError::Storage)?;
+            let image = reader.read(data).await;
 
-                    Ok(ImageServiceResponse::Info(info))
-                }
-                ImageServiceRequest::Image {
-                    identifier,
-                    region,
-                    size,
-                    rotation,
-                    quality,
-                    format,
-                } => todo!(),
+            match req.kind {
+                ImageServiceRequestKind::Info => handle_info_request(image)
+                    .await
+                    .map(ImageServiceResponse::Info),
+                ImageServiceRequestKind::Image(params) => handle_image_request(image, params)
+                    .await
+                    .map(ImageServiceResponse::Image),
             }
         })
     }
@@ -136,4 +145,27 @@ impl Service<ImageServiceRequest> for ImageService {
     ) -> std::task::Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
+}
+
+#[tracing::instrument(err, skip(image))]
+async fn handle_info_request(mut image: BoxedImage) -> Result<ImageInfo, ImageServiceError> {
+    let info = image.info();
+
+    Ok(info)
+}
+
+#[tracing::instrument(err, skip(image))]
+async fn handle_image_request(
+    mut image: BoxedImage,
+    params: ImageParameters,
+) -> Result<ImageStream, ImageServiceError> {
+    let (tx, rx) = mpsc::channel(16);
+    let decode_task = tokio::task::spawn_blocking(move || {
+        let decoder = image.open_region(params.region);
+        let buffer = BytesMut::default();
+
+        tx.blocking_send(buffer.freeze())
+            .expect("failed to transmit decoded image buffer to encoder")
+    });
+    todo!()
 }

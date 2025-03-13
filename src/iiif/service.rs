@@ -113,20 +113,8 @@ impl Service<ImageServiceRequest> for ImageService {
             match req {
                 ImageServiceRequest::Info { identifier } => {
                     let data = storage.lock().await.open(&identifier).await.unwrap();
-                    let stream = match data {
-                        FileOrStream::File(path) => {
-                            todo!()
-                        }
-                        FileOrStream::Stream(reader) => Box::into_pin(reader),
-                    };
-
-                    info!(identifier = identifier, "Found storage for image");
-
-                    let mut image = tokio::task::spawn_blocking(|| {
-                        KakaduImage::new(KakaduContext::default(), stream, None).boxed()
-                    });
-
-                    let info = image.await.expect("failed to read image").info();
+                    let mut image = reader.read(data).await;
+                    let info = image.info();
 
                     Ok(ImageServiceResponse::Info(info))
                 }

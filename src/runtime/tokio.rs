@@ -53,7 +53,7 @@ impl Runtime for TokioRuntime {
             .build()
             .expect("failed to create HTTP runtime");
 
-        let _error: Result<_, std::io::Error> = rt.block_on(async move {
+        let result: Result<_, std::io::Error> = rt.block_on(async move {
             let listener = TcpListener::bind(options.bind_address).await?;
 
             info!("Listening on {:?}", options.bind_address);
@@ -69,5 +69,7 @@ impl Runtime for TokioRuntime {
 
             Ok(())
         });
+
+        result.expect("failed to bind HTTP server")
     }
 }

@@ -1,21 +1,26 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use kaduceus::{KakaduContext, KakaduImage};
+use tokio::runtime::{Builder, Runtime};
 
 use super::ImageReader;
 use crate::iiif::info::{ImageInfo, PreferredSize, Tile};
-use crate::iiif::Size;
 use crate::image::{BoxedImage, Image};
 use crate::storage::FileOrStream;
 
 pub struct KaduceusImageReader {
     context: KakaduContext,
+    executor: Arc<Runtime>,
 }
 
 impl KaduceusImageReader {
     pub fn new(context: KakaduContext) -> Self {
-        Self { context }
+        Self {
+            context,
+            executor: Arc::new(Builder::new_multi_thread().enable_all().build().unwrap()),
+        }
     }
 }
 
@@ -58,14 +63,21 @@ impl ImageReader for KaduceusImageReader {
         location: FileOrStream,
     ) -> Pin<Box<dyn Future<Output = BoxedImage> + Send + 'a>> {
         Box::pin(async move {
-            let stream = match location {
-                FileOrStream::File(path) => {
-                    todo!()
-                }
-                FileOrStream::Stream(reader) => Box::into_pin(reader),
-            };
+            let executor = self.executor.clone();
+            let context = self.context.clone();
 
-            KakaduImage::new(self.context.clone(), stream, None).boxed()
+            tokio::task::spawn_blocking(move || {
+                let stream = match location {
+                    FileOrStream::File(path) => {
+                        todo!()
+                    }
+                    FileOrStream::Stream(reader) => Box::into_pin(reader),
+                };
+
+                KakaduImage::new(executor, context, stream, None).boxed()
+            })
+            .await
+            .unwrap()
         })
     }
 }

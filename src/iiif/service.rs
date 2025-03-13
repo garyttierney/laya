@@ -11,8 +11,9 @@ use hyper::body::Incoming;
 use hyper::Request;
 use kaduceus::KakaduContext;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::SendError;
 use tower::Service;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::http::IiifRequestError;
 use super::info::ImageInfo;
@@ -95,20 +96,19 @@ impl Display for ImageServiceError {
 
 #[derive(Clone)]
 pub struct ImageService {
-    storage: Arc<dyn StorageProvider>,
-    reader: Arc<dyn ImageReader>,
+    pipeline: Arc<ImagePipeline<Box<dyn StorageProvider>, Box<dyn ImageReader>>>, 
 }
 
 impl ImageService {
     pub fn new<S, R>(pipeline: ImagePipeline<S, R>) -> ImageService
     where
-        S: StorageProvider + 'static,
-        R: ImageReader + Send + Sync + 'static,
+        S: StorageProvider,
+        R: ImageReader + 'static,
     {
-        let storage = Arc::new(pipeline.storage);
-        let reader = Arc::new(pipeline.reader);
+        let boed = pipeline.boxed();
 
-        Self { storage, reader }
+        todo!()
+        // Self { pipeline: Arc::new(pipeline.boxed()) }
     }
 }
 
@@ -118,25 +118,7 @@ impl Service<ImageServiceRequest> for ImageService {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn call(&mut self, req: ImageServiceRequest) -> Self::Future {
-        let storage = self.storage.clone();
-        let reader = self.reader.clone();
-
-        Box::pin(async move {
-            let data = storage
-                .open(&req.identifier)
-                .await
-                .map_err(ImageServiceError::Storage)?;
-            let image = reader.read(data).await;
-
-            match req.kind {
-                ImageServiceRequestKind::Info => handle_info_request(image)
-                    .await
-                    .map(ImageServiceResponse::Info),
-                ImageServiceRequestKind::Image(params) => handle_image_request(image, params)
-                    .await
-                    .map(ImageServiceResponse::Image),
-            }
-        })
+        todo!()
     }
 
     fn poll_ready(
@@ -159,13 +141,29 @@ async fn handle_image_request(
     mut image: BoxedImage,
     params: ImageParameters,
 ) -> Result<ImageStream, ImageServiceError> {
-    let (tx, rx) = mpsc::channel(16);
+    let (decoded_tx, decoded_rx) = mpsc::channel(16);
     let decode_task = tokio::task::spawn_blocking(move || {
         let decoder = image.open_region(params.region);
-        let buffer = BytesMut::default();
+        let mut buffer = BytesMut::default();
 
-        tx.blocking_send(buffer.freeze())
-            .expect("failed to transmit decoded image buffer to encoder")
+        while decoder.process(&mut buffer) {
+            let buf = std::mem::replace(&mut buffer, BytesMut::default());
+
+            if let Err(_) = decoded_tx.blocking_send(buf.freeze()) {
+                warn!("image decoding task was cancelled prematurely");
+                return;
+            }
+        }
+    });
+
+    let (encoded_tx, encoded_rx) = mpsc::channel(16);
+    let encode_task = tokio::task::spawn_blocking(move || {
+        let encoder = todo!() /* API TBD */;
+        let mut buffer = BytesMut::default();
+
+        while let Some(data) = decoded_rx.blocking_recv() {
+            encoder.encode(data, &mut buffer);
+        }
     });
     todo!()
 }

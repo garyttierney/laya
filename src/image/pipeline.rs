@@ -1,5 +1,7 @@
+use std::{future::Future, sync::Arc};
+
 use super::ImageReader;
-use crate::storage::StorageProvider;
+use crate::storage::{FileOrStream, StorageError, StorageProvider};
 
 #[derive(Default)]
 pub struct ImagePipelineBuilder<S: StorageProvider, R: ImageReader> {
@@ -30,8 +32,16 @@ impl<L: StorageProvider, R: ImageReader> ImagePipelineBuilder<L, R> {
     }
 }
 
-#[allow(unused)]
-pub struct ImagePipeline<L: StorageProvider, R: ImageReader> {
-    pub(crate) storage: L,
+pub struct ImagePipeline<S: StorageProvider, R: ImageReader> {
+    pub(crate) storage: S,
     pub(crate) reader: R,
+}
+
+impl<S: StorageProvider + Sized, R: ImageReader + Sized> ImagePipeline<S, R> {
+    pub fn boxed(self) -> ImagePipeline<Box<dyn StorageProvider + 'static>, Box<dyn ImageReader + 'static>> {
+        ImagePipeline {
+            storage: Box::new(self.storage),
+            reader: Box::new(self.reader)
+        }   
+    }
 }

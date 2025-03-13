@@ -3,6 +3,7 @@ use std::fmt::Display;
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use futures::AsyncRead;
 
@@ -21,6 +22,15 @@ pub trait StorageProvider: Send + Sync {
 }
 
 impl<T: StorageProvider> StorageProvider for Box<T> {
+    fn open(
+        &self,
+        id: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send>> {
+        T::open(self, id)
+    }
+}
+
+impl<T: StorageProvider> StorageProvider for Arc<T> {
     fn open(
         &self,
         id: &str,

@@ -5,7 +5,6 @@ pub mod storage;
 pub mod telemetry;
 
 use std::net::SocketAddr;
-use std::path::Path;
 use std::time::Duration;
 
 use clap::Parser;
@@ -18,9 +17,8 @@ use iiif::service::ImageService;
 use kaduceus::KakaduContext;
 use opendal::services::Fs;
 use opentelemetry_http::HeaderExtractor;
-use runtime::tokio::TokioRuntime;
 use runtime::Runtime;
-use serde::{Deserialize, Serialize};
+use runtime::tokio::TokioRuntime;
 use storage::opendal::OpenDalStorageProvider;
 use tower::ServiceBuilder;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
@@ -35,31 +33,6 @@ use tracing_opentelemetry_instrumentation_sdk::http::{
 };
 
 use crate::image::codec::KaduceusImageReader;
-use crate::image::ImagePipelineBuilder;
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "type")]
-pub enum ImageSourceOptions {
-    Local { path: Box<Path> },
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct IiifImageServiceOptions {
-    prefix: String,
-    default_format: String,
-    image_source: ImageSourceOptions,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct HttpOptions {
-    bind_address: SocketAddr,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Options {
-    http: HttpOptions,
-    iiif: IiifImageServiceOptions,
-}
 
 pub fn start<R: Runtime>(options: LayaOptions) {
     let kdu_context = KakaduContext::default();
@@ -69,12 +42,7 @@ pub fn start<R: Runtime>(options: LayaOptions) {
     let storage_provider =
         OpenDalStorageProvider::new(storage).expect("failed to create storage provider");
 
-    let image_pipeline = ImagePipelineBuilder::new()
-        .with_storage(storage_provider)
-        .with_reader(kdu_image_reader)
-        .build();
-
-    let image_service = ImageService::new(image_pipeline);
+    let image_service = ImageService::new(storage_provider, kdu_image_reader);
     let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
 
     let svc = ServiceBuilder::new()

@@ -12,7 +12,7 @@ use tower_http::classify::{NeverClassifyEos, ServerErrorsFailureClass};
 use tower_http::trace::ResponseBody;
 use tracing::info;
 
-use super::{handle_connection, Runtime};
+use super::{Runtime, handle_connection};
 use crate::LayaOptions;
 
 pub struct TokioRuntime;

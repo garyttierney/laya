@@ -2,14 +2,14 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use kaduceus::{KakaduContext, KakaduDecompressor, KakaduImage};
-use mediatype::names::{IMAGE, JP2};
+use kaduceus::{KakaduContext, KakaduImage};
 use mediatype::MediaTypeBuf;
+use mediatype::names::{IMAGE, JP2};
 use tokio::runtime::{Builder, Runtime};
 
 use super::ImageReader;
-use crate::iiif::info::{ImageInfo, PreferredSize, Tile};
 use crate::iiif::Region;
+use crate::iiif::info::{ImageInfo, PreferredSize, Tile};
 use crate::image::{BoxedImage, Image, ImageDecoder, ImageStream};
 use crate::storage::FileOrStream;
 

@@ -1,18 +1,17 @@
-mod pipeline;
 use std::ops::{Deref, DerefMut};
 
 use bytes::Bytes;
 use futures::Stream;
 use mediatype::MediaTypeBuf;
-pub use pipeline::{ImagePipeline, ImagePipelineBuilder};
 
 pub mod codec;
 pub use codec::ImageReader;
 
-use crate::iiif::info::ImageInfo;
 use crate::iiif::Region;
+use crate::iiif::info::ImageInfo;
 
-/// An asynchronous stream of encoded image data and the associated [mediatype::MediaType]
+/// An asynchronous sequential stream of encoded image data and the associated
+/// [mediatype::MediaType]
 pub struct ImageStream {
     pub media_type: MediaTypeBuf,
     pub data: Box<dyn Stream<Item = Bytes> + Send + Sync + Unpin>,

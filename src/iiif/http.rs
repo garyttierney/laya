@@ -5,19 +5,18 @@ use std::pin::Pin;
 use std::task::Poll;
 
 use futures::{Stream, StreamExt};
-use http_body::{Body, Frame};
+use http_body::Frame;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full, StreamBody};
 use hyper::body::{Bytes, Incoming};
 use hyper::{Request, Response, StatusCode};
-use serde_json::{json, to_string_pretty, Value};
+use serde_json::{Value, json, to_string_pretty};
 use tower::Service;
 use tracing::error;
 
 use super::service::{ImageServiceError, ImageServiceRequestKind, ImageServiceResponse};
-use crate::iiif::info::ImageInfo;
-use crate::iiif::parse::ParseError as ImageRequestParseError;
 use crate::iiif::ImageServiceRequest;
+use crate::iiif::parse::ParseError as ImageRequestParseError;
 
 #[derive(Clone)]
 pub struct HttpImageService<S>
@@ -120,6 +119,11 @@ where
 
                 match inner.call(request).await {
                     Ok(response) => response.try_into(),
+                    Err(ImageServiceError::Storage(crate::storage::StorageError::NotFound)) => {
+                        Response::builder()
+                            .status(StatusCode::NOT_FOUND)
+                            .body(text_body("Image file not found"))
+                    }
                     Err(e) => {
                         error!("failed to handle an image service request: {e:?}");
 
@@ -214,19 +218,6 @@ fn ok_response<S: Into<String>>(body: S) -> Result<HttpImageServiceResponse, hyp
         .status(StatusCode::OK)
         .body(text_body(body))
 }
-// #[tracing::instrument(skip_all, err)]
-// async fn image_request(
-//     request: ImageRequest,
-//     source: (),
-// ) -> Result<Response<BoxBody<Bytes, std::io::Error>>, hyper::http::Error> {
-//     // let Ok(image) = todo!("fix this"); source.resolve(request.identifier()).await else {
-//     //     return Ok(bad_request("io error")); // TODO
-//     // };
-
-//     Response::builder()
-//         .status(StatusCode::OK)
-//         .body(Empty::new().map_err(|e| unreachable!()).boxed())
-// }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IiifRequestError {

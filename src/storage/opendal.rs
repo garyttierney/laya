@@ -19,6 +19,15 @@ impl OpenDalStorageProvider {
     }
 }
 
+impl From<opendal::Error> for StorageError {
+    fn from(value: opendal::Error) -> Self {
+        match value.kind() {
+            opendal::ErrorKind::NotFound => StorageError::NotFound,
+            _ => StorageError::Other(value.to_string()),
+        }
+    }
+}
+
 impl StorageProvider for OpenDalStorageProvider {
     fn open(
         &self,
@@ -34,11 +43,9 @@ impl StorageProvider for OpenDalStorageProvider {
 async fn open(operator: Operator, path: String) -> Result<FileOrStream, StorageError> {
     let reader = operator
         .reader(&path)
-        .await
-        .unwrap()
+        .await?
         .into_futures_async_read(..)
-        .await
-        .expect("couldn't create an async reader");
+        .await?;
 
     Ok(FileOrStream::Stream(Box::new(reader)))
 }

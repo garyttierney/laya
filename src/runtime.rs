@@ -61,9 +61,7 @@ where
     S::Error: Send + Sync + Error + 'static,
     E: Into<Box<dyn Error + Send + Sync>> + Sync + Display + 'static,
 {
-    let mut http = hyper_util::server::conn::auto::Builder::new(R::executor());
-    let timer = R::timer();
-
-    http.http1().timer(timer.clone()).http2().timer(timer);
-    http.serve_connection_with_upgrades(io, service).await
+    hyper_util::server::conn::auto::Builder::new(R::executor())
+        .serve_connection(io, service)
+        .await
 }

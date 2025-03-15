@@ -5,21 +5,16 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 
-use bytes::BytesMut;
-use futures::{SinkExt, Stream};
-use hyper::body::Incoming;
+use futures::FutureExt;
 use hyper::Request;
-use kaduceus::KakaduContext;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::SendError;
+use hyper::body::Incoming;
 use tower::Service;
-use tracing::{info, warn};
 
 use super::http::IiifRequestError;
 use super::info::ImageInfo;
 use super::{Format, Quality, Region, Rotation, Size};
-use crate::image::{BoxedImage, Image, ImagePipeline, ImageReader, ImageStream};
-use crate::storage::{FileOrStream, StorageError, StorageProvider};
+use crate::image::{BoxedImage, Image, ImageReader, ImageStream};
+use crate::storage::{StorageError, StorageProvider};
 
 pub enum ImageServiceResponse {
     Info(ImageInfo),
@@ -96,19 +91,17 @@ impl Display for ImageServiceError {
 
 #[derive(Clone)]
 pub struct ImageService {
-    pipeline: Arc<ImagePipeline<Box<dyn StorageProvider>, Box<dyn ImageReader>>>, 
+    storage: Arc<dyn StorageProvider>,
+    reader: Arc<dyn ImageReader>,
 }
 
 impl ImageService {
-    pub fn new<S, R>(pipeline: ImagePipeline<S, R>) -> ImageService
+    pub fn new<S, R>(storage: S, reader: R) -> ImageService
     where
-        S: StorageProvider,
+        S: StorageProvider + 'static,
         R: ImageReader + 'static,
     {
-        let boed = pipeline.boxed();
-
-        todo!()
-        // Self { pipeline: Arc::new(pipeline.boxed()) }
+        Self { storage: Arc::new(storage), reader: Arc::from(reader) }
     }
 }
 
@@ -118,7 +111,25 @@ impl Service<ImageServiceRequest> for ImageService {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn call(&mut self, req: ImageServiceRequest) -> Self::Future {
-        todo!()
+        let storage = self.storage.clone();
+        let reader = self.reader.clone();
+
+        Box::pin(async move {
+            let data = storage
+                .open(&req.identifier)
+                .await
+                .map_err(ImageServiceError::Storage)?;
+            let image = reader.read(data).await;
+
+            match req.kind {
+                ImageServiceRequestKind::Info => handle_info_request(image)
+                    .await
+                    .map(ImageServiceResponse::Info),
+                ImageServiceRequestKind::Image(params) => handle_image_request(image, params)
+                    .await
+                    .map(ImageServiceResponse::Image),
+            }
+        })
     }
 
     fn poll_ready(
@@ -138,32 +149,32 @@ async fn handle_info_request(mut image: BoxedImage) -> Result<ImageInfo, ImageSe
 
 #[tracing::instrument(err, skip(image))]
 async fn handle_image_request(
-    mut image: BoxedImage,
+    image: BoxedImage,
     params: ImageParameters,
 ) -> Result<ImageStream, ImageServiceError> {
-    let (decoded_tx, decoded_rx) = mpsc::channel(16);
-    let decode_task = tokio::task::spawn_blocking(move || {
-        let decoder = image.open_region(params.region);
-        let mut buffer = BytesMut::default();
+    // let (decoded_tx, decoded_rx) = mpsc::channel(16);
+    // let decode_task = tokio::task::spawn_blocking(move || {
+    //     let decoder = image.open_region(params.region);
+    //     let mut buffer = BytesMut::default();
 
-        while decoder.process(&mut buffer) {
-            let buf = std::mem::replace(&mut buffer, BytesMut::default());
+    //     while decoder.process(&mut buffer) {
+    //         let buf = std::mem::replace(&mut buffer, BytesMut::default());
 
-            if let Err(_) = decoded_tx.blocking_send(buf.freeze()) {
-                warn!("image decoding task was cancelled prematurely");
-                return;
-            }
-        }
-    });
+    //         if let Err(_) = decoded_tx.blocking_send(buf.freeze()) {
+    //             warn!("image decoding task was cancelled prematurely");
+    //             return;
+    //         }
+    //     }
+    // });
 
-    let (encoded_tx, encoded_rx) = mpsc::channel(16);
-    let encode_task = tokio::task::spawn_blocking(move || {
-        let encoder = todo!() /* API TBD */;
-        let mut buffer = BytesMut::default();
+    // let (encoded_tx, encoded_rx) = mpsc::channel(16);
+    // let encode_task = tokio::task::spawn_blocking(move || {
+    //     let encoder = todo!() /* API TBD */;
+    //     let mut buffer = BytesMut::default();
 
-        while let Some(data) = decoded_rx.blocking_recv() {
-            encoder.encode(data, &mut buffer);
-        }
-    });
+    //     while let Some(data) = decoded_rx.blocking_recv() {
+    //         encoder.encode(data, &mut buffer);
+    //     }
+    // });
     todo!()
 }

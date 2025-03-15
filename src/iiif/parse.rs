@@ -3,8 +3,8 @@ use std::fmt::{Display, Formatter};
 use std::num::NonZero;
 use std::str::FromStr;
 
-use super::http::IiifRequestError;
 use super::ImageServiceRequest;
+use super::http::IiifRequestError;
 use crate::iiif::{Dimension, Format, Quality, Region, Rotation, Scale, Size};
 
 const PERCENT_PREFIX: &str = "pct:";

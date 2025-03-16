@@ -17,8 +17,6 @@ use iiif::service::ImageService;
 use kaduceus::KakaduContext;
 use opendal::services::Fs;
 use opentelemetry_http::HeaderExtractor;
-use runtime::Runtime;
-use runtime::tokio::TokioRuntime;
 use storage::opendal::OpenDalStorageProvider;
 use tower::ServiceBuilder;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
@@ -33,59 +31,6 @@ use tracing_opentelemetry_instrumentation_sdk::http::{
 };
 
 use crate::image::codec::KaduceusImageReader;
-
-pub fn start<R: Runtime>(options: LayaOptions) {
-    let kdu_context = KakaduContext::default();
-    let kdu_image_reader = KaduceusImageReader::new(kdu_context);
-
-    let storage = Fs::default().root("test-data");
-    let storage_provider =
-        OpenDalStorageProvider::new(storage).expect("failed to create storage provider");
-
-    let image_service = ImageService::new(storage_provider, kdu_image_reader);
-    let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
-
-    let svc = ServiceBuilder::new()
-        .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|req: &Request<Incoming>| {
-                    let http_method = http_method(req.method());
-
-                    let span = info_span!(
-                        "http_request",
-                        http.request.method = %http_method,
-                        network.protocol.version = %http_flavor(req.version()),
-                        server.address = http_host(req),
-                        server.port = ?req.uri().port(),
-                        http.client.address = Empty,
-                        user_agent.original = user_agent(req),
-                        http.response.status_code = Empty,
-                        url.path = req.uri().path(),
-                        url.query = req.uri().query(),
-                        url.scheme = url_scheme(req.uri()),
-                        otel.name = Empty,
-                        otel.kind = ?opentelemetry::trace::SpanKind::Server,
-                        otel.status_code = Empty,
-                        exception.message = Empty,
-                    );
-
-                    let extractor = HeaderExtractor(req.headers());
-                    let context = opentelemetry::global::get_text_map_propagator(|propagator| {
-                        propagator.extract(&extractor)
-                    });
-                    span.set_parent(context);
-                    span
-                })
-                .on_response(|response: &Response<_>, _: Duration, span: &tracing::Span| {
-                    update_span_from_response(span, response)
-                }),
-        )
-        .layer(TimeoutLayer::new(Duration::from_secs(10)))
-        .service(http_service);
-
-    R::bind(options, TowerToHyperService::new(svc))
-}
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]
 pub enum Rt {
@@ -180,6 +125,55 @@ fn main() -> color_eyre::Result<()> {
     let options = LayaOptions::parse();
     let telemetry = telemetry::install_telemetry_collector(options.disable_opentelemetry);
 
+    let kdu_context = KakaduContext::default();
+    let kdu_image_reader = KaduceusImageReader::new(kdu_context);
+
+    let storage = Fs::default().root("test-data");
+    let storage_provider =
+        OpenDalStorageProvider::new(storage).expect("failed to create storage provider");
+
+    let image_service = ImageService::new(storage_provider, kdu_image_reader);
+    let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
+    let tower_service = ServiceBuilder::new()
+        .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|req: &Request<Incoming>| {
+                    let http_method = http_method(req.method());
+
+                    let span = info_span!(
+                        "http_request",
+                        http.request.method = %http_method,
+                        network.protocol.version = %http_flavor(req.version()),
+                        server.address = http_host(req),
+                        server.port = ?req.uri().port(),
+                        http.client.address = Empty,
+                        user_agent.original = user_agent(req),
+                        http.response.status_code = Empty,
+                        url.path = req.uri().path(),
+                        url.query = req.uri().query(),
+                        url.scheme = url_scheme(req.uri()),
+                        otel.name = Empty,
+                        otel.kind = ?opentelemetry::trace::SpanKind::Server,
+                        otel.status_code = Empty,
+                        exception.message = Empty,
+                    );
+
+                    let extractor = HeaderExtractor(req.headers());
+                    let context = opentelemetry::global::get_text_map_propagator(|propagator| {
+                        propagator.extract(&extractor)
+                    });
+                    span.set_parent(context);
+                    span
+                })
+                .on_response(|response: &Response<_>, _: Duration, span: &tracing::Span| {
+                    update_span_from_response(span, response)
+                }),
+        )
+        .layer(TimeoutLayer::new(Duration::from_secs(10)))
+        .service(http_service);
+
+    let hyper_service = TowerToHyperService::new(tower_service);
     let rt = Rt::Tokio;
 
     match rt {
@@ -189,7 +183,7 @@ fn main() -> color_eyre::Result<()> {
         }
 
         #[cfg(feature = "rt-tokio")]
-        Rt::Tokio => start::<TokioRuntime>(options),
+        Rt::Tokio => runtime::tokio::serve(options, hyper_service),
     }
 
     telemetry.shutdown(Duration::from_secs(5));

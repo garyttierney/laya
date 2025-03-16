@@ -9,7 +9,7 @@ use tokio::runtime::{Builder, Runtime};
 
 use super::ImageReader;
 use crate::iiif::Region;
-use crate::iiif::info::{ImageInfo, PreferredSize, Tile};
+use crate::image::info::{ImageInfo, PreferredSize, Tile};
 use crate::image::{BoxedImage, Image, ImageDecoder, ImageStream};
 use crate::storage::FileOrStream;
 
@@ -77,21 +77,25 @@ impl ImageDecoder for KaduceusImageDecoder {
 impl ImageReader for KaduceusImageReader {
     fn read<'a>(
         &'a self,
+        name: Option<String>,
         location: FileOrStream,
     ) -> Pin<Box<dyn Future<Output = BoxedImage> + Send + 'a>> {
         Box::pin(async move {
             let executor = self.executor.clone();
             let context = self.context.clone();
+            let span = tracing::Span::current();
 
             tokio::task::spawn_blocking(move || {
-                let stream = match location {
-                    FileOrStream::File(path) => {
-                        todo!()
-                    }
-                    FileOrStream::Stream(reader) => Box::into_pin(reader),
-                };
+                span.in_scope(|| {
+                    let stream = match location {
+                        FileOrStream::File(file) => {
+                            Box::into_pin((file.stream_factory)(&file.path))
+                        }
+                        FileOrStream::Stream(reader) => Box::into_pin(reader),
+                    };
 
-                KakaduImage::new(executor, context, stream, None).boxed()
+                    KakaduImage::new(executor, context, stream, name).boxed()
+                })
             })
             .await
             .unwrap()

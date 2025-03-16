@@ -1,9 +1,10 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use chrono::Timelike;
 use opendal::{Builder, Operator};
 
-use super::{FileOrStream, StorageError, StorageProvider};
+use super::{FileOrStream, StorageError, StorageObject, StorageProvider};
 
 pub struct OpenDalStorageProvider {
     operator: Operator,
@@ -32,7 +33,7 @@ impl StorageProvider for OpenDalStorageProvider {
     fn open(
         &self,
         id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Future<Output = Result<StorageObject, StorageError>> + Send + 'static>> {
         let operator = self.operator.clone();
         let path = id.to_string();
 
@@ -40,12 +41,19 @@ impl StorageProvider for OpenDalStorageProvider {
     }
 }
 
-async fn open(operator: Operator, path: String) -> Result<FileOrStream, StorageError> {
+async fn open(operator: Operator, path: String) -> Result<StorageObject, StorageError> {
+    let stat = operator.stat(&path).await?;
     let reader = operator
         .reader(&path)
         .await?
         .into_futures_async_read(..)
         .await?;
 
-    Ok(FileOrStream::Stream(Box::new(reader)))
+    Ok(StorageObject {
+        name: Some(path),
+        content: FileOrStream::Stream(Box::new(reader)),
+        last_modified: stat
+            .last_modified()
+            .map(|utc| utc.with_nanosecond(0).unwrap().into()),
+    })
 }

@@ -3,12 +3,23 @@ use std::fmt::Display;
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
+use std::time::SystemTime;
 
 use futures::AsyncRead;
 
 pub mod opendal;
 
 pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncRead> + Send>;
+
+/// An object stored by a storage provider.
+///
+/// This structure represents a stored object with optional metadata
+/// such as a name and last modification time, along with its contents.
+pub struct StorageObject {
+    pub name: Option<String>,
+    pub last_modified: Option<SystemTime>,
+    pub content: FileOrStream,
+}
 
 /// Provides storage for data identified by unique string identifiers.
 pub trait StorageProvider: Send + Sync {
@@ -17,14 +28,18 @@ pub trait StorageProvider: Send + Sync {
     fn open(
         &self,
         id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<StorageObject, StorageError>> + Send>>;
+
+    fn healthcheck(&self) -> Pin<Box<dyn Future<Output = Result<(), StorageError>> + Send>> {
+        Box::pin(futures::future::ready(Ok(())))
+    }
 }
 
 impl<T: StorageProvider> StorageProvider for Box<T> {
     fn open(
         &self,
         id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<StorageObject, StorageError>> + Send>> {
         T::open(self, id)
     }
 }
@@ -33,7 +48,7 @@ impl StorageProvider for Box<dyn StorageProvider> {
     fn open(
         &self,
         id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<FileOrStream, StorageError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<StorageObject, StorageError>> + Send>> {
         <dyn StorageProvider>::open(self, id)
     }
 }
@@ -41,8 +56,8 @@ impl StorageProvider for Box<dyn StorageProvider> {
 /// A path to a file encapsulated with a factory method that can provide an asynchronous stream if
 /// necessary.
 pub struct FileStream {
-    path: Box<Path>,
-    stream_factory: FileStreamProvider,
+    pub path: Box<Path>,
+    pub stream_factory: FileStreamProvider,
 }
 
 /// A source of data, coming from a local file or asynchronous stream.

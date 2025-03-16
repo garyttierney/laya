@@ -6,9 +6,11 @@ use mediatype::MediaTypeBuf;
 
 pub mod codec;
 pub use codec::ImageReader;
+pub mod info;
+
+use info::ImageInfo;
 
 use crate::iiif::Region;
-use crate::iiif::info::ImageInfo;
 
 /// An asynchronous sequential stream of encoded image data and the associated
 /// [mediatype::MediaType]

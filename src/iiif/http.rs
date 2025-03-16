@@ -7,14 +7,17 @@ use std::task::Poll;
 use futures::{Stream, StreamExt};
 use http_body::Frame;
 use http_body_util::combinators::BoxBody;
-use http_body_util::{BodyExt, Full, StreamBody};
+use http_body_util::{BodyExt, Empty, Full, StreamBody};
 use hyper::body::{Bytes, Incoming};
+use hyper::header::{CONTENT_TYPE, HeaderValue, LAST_MODIFIED};
 use hyper::{Request, Response, StatusCode};
 use serde_json::{Value, json, to_string_pretty};
 use tower::Service;
-use tracing::error;
+use tracing::{Instrument, error};
 
-use super::service::{ImageServiceError, ImageServiceRequestKind, ImageServiceResponse};
+use super::service::{
+    ImageServiceError, ImageServiceRequestKind, ImageServiceResponse, ImageServiceResponseKind,
+};
 use crate::iiif::ImageServiceRequest;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
 
@@ -99,9 +102,10 @@ where
             .to_string();
 
         let request_span = tracing::Span::current();
+        let request_method = req.method().to_string();
         let request = match request_path.as_str() {
             "/" => return ok_response("OK!"),
-            _ => request_path.parse(),
+            _ => req.try_into(),
         };
 
         match request {
@@ -115,9 +119,9 @@ where
                     }
                 };
 
-                request_span.record("otel.name", format!("{} {route}", req.method()));
+                request_span.record("otel.name", format!("{} {route}", request_method));
 
-                match inner.call(request).await {
+                match inner.call(request).instrument(request_span).await {
                     Ok(response) => response.try_into(),
                     Err(ImageServiceError::Storage(crate::storage::StorageError::NotFound)) => {
                         Response::builder()
@@ -144,17 +148,32 @@ impl TryInto<HttpImageServiceResponse> for ImageServiceResponse {
     type Error = hyper::http::Error;
 
     fn try_into(self) -> Result<HttpImageServiceResponse, Self::Error> {
-        match self {
-            ImageServiceResponse::Image(image) => {
+        let mut response = Response::builder();
+        let headers = response.headers_mut().unwrap();
+
+        if let Some(Ok(value)) = self
+            .last_modified_time
+            .map(httpdate::fmt_http_date)
+            .map(|value| HeaderValue::from_str(&value))
+        {
+            headers.append(LAST_MODIFIED, value);
+        }
+
+        match self.kind {
+            ImageServiceResponseKind::CacheHit => Response::builder()
+                .status(StatusCode::NOT_MODIFIED)
+                .body(BodyExt::boxed(Empty::new().map_err(|_| unreachable!()))),
+
+            ImageServiceResponseKind::Image(image) => {
                 let body =
                     StreamBody::new(BytesStream(image.data).map(|data| Ok(Frame::data(data))));
 
-                Response::builder()
+                response
                     .status(StatusCode::OK)
-                    .header("Content-Type", image.media_type.canonicalize().to_string())
+                    .header(CONTENT_TYPE, image.media_type.canonicalize().to_string())
                     .body(BodyExt::boxed(body))
             }
-            ImageServiceResponse::Info(info) => {
+            ImageServiceResponseKind::Info(info) => {
                 let mut document = json!({
                     "@context": "http://iiif.io/api/image/3/context.json",
                     "type": "ImageService3",
@@ -199,9 +218,12 @@ impl TryInto<HttpImageServiceResponse> for ImageServiceResponse {
                     document["rights"] = json!(rights);
                 }
 
-                to_string_pretty(&document)
-                    .map(ok_response)
-                    .expect("failed to serialize info.json")
+                let body = to_string_pretty(&document).expect("failed to serialize info.json");
+
+                response
+                    .status(StatusCode::OK)
+                    .header(CONTENT_TYPE, "application/ld+json")
+                    .body(text_body(body))
             }
         }
     }

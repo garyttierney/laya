@@ -4,27 +4,36 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
+use std::time::SystemTime;
 
 use futures::FutureExt;
 use hyper::Request;
 use hyper::body::Incoming;
+use hyper::header::IF_MODIFIED_SINCE;
 use tower::Service;
 
 use super::http::IiifRequestError;
-use super::info::ImageInfo;
 use super::{Format, Quality, Region, Rotation, Size};
+use crate::image::info::ImageInfo;
 use crate::image::{BoxedImage, Image, ImageReader, ImageStream};
 use crate::storage::{StorageError, StorageProvider};
 
-pub enum ImageServiceResponse {
+pub enum ImageServiceResponseKind {
     Info(ImageInfo),
     Image(ImageStream),
+    CacheHit,
+}
+
+pub struct ImageServiceResponse {
+    pub kind: ImageServiceResponseKind,
+    pub last_modified_time: Option<SystemTime>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct ImageServiceRequest {
     pub(crate) identifier: String,
     pub(crate) kind: ImageServiceRequestKind,
+    pub(crate) last_access_time: Option<SystemTime>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -42,18 +51,30 @@ pub struct ImageParameters {
     format: Format,
 }
 
-impl TryFrom<&Request<Incoming>> for ImageServiceRequest {
+impl TryFrom<Request<Incoming>> for ImageServiceRequest {
     type Error = IiifRequestError;
 
-    fn try_from(req: &Request<Incoming>) -> Result<Self, Self::Error> {
-        let path = req.uri().path();
-        path.parse()
+    fn try_from(req: Request<Incoming>) -> Result<Self, Self::Error> {
+        let last_access_time = req
+            .headers()
+            .get(IF_MODIFIED_SINCE)
+            .and_then(|value| httpdate::parse_http_date(value.to_str().ok()?).ok());
+
+        Ok(req
+            .uri()
+            .path()
+            .parse::<ImageServiceRequest>()?
+            .with_last_access_time(last_access_time))
     }
 }
 
 impl ImageServiceRequest {
     pub fn info<S: Into<String>>(identifier: S) -> Self {
-        ImageServiceRequest { identifier: identifier.into(), kind: ImageServiceRequestKind::Info }
+        ImageServiceRequest {
+            identifier: identifier.into(),
+            kind: ImageServiceRequestKind::Info,
+            last_access_time: None,
+        }
     }
 
     pub fn image<S: Into<String>>(
@@ -66,6 +87,7 @@ impl ImageServiceRequest {
     ) -> Self {
         ImageServiceRequest {
             identifier: identifier.into(),
+            last_access_time: None,
             kind: ImageServiceRequestKind::Image(ImageParameters {
                 region,
                 size,
@@ -74,6 +96,10 @@ impl ImageServiceRequest {
                 format,
             }),
         }
+    }
+
+    pub fn with_last_access_time(self, last_access_time: Option<SystemTime>) -> Self {
+        Self { last_access_time, ..self }
     }
 }
 
@@ -119,16 +145,29 @@ impl Service<ImageServiceRequest> for ImageService {
                 .open(&req.identifier)
                 .await
                 .map_err(ImageServiceError::Storage)?;
-            let image = reader.read(data).await;
 
-            match req.kind {
+            if req
+                .last_access_time
+                .zip(data.last_modified)
+                .is_some_and(|(atime, mtime)| atime >= mtime)
+            {
+                return Ok(ImageServiceResponse {
+                    kind: ImageServiceResponseKind::CacheHit,
+                    last_modified_time: data.last_modified,
+                });
+            }
+
+            let image = reader.read(data.name, data.content).await;
+            let kind = match req.kind {
                 ImageServiceRequestKind::Info => handle_info_request(image)
                     .await
-                    .map(ImageServiceResponse::Info),
+                    .map(ImageServiceResponseKind::Info),
                 ImageServiceRequestKind::Image(params) => handle_image_request(image, params)
                     .await
-                    .map(ImageServiceResponse::Image),
-            }
+                    .map(ImageServiceResponseKind::Image),
+            }?;
+
+            Ok(ImageServiceResponse { kind, last_modified_time: data.last_modified })
         })
     }
 

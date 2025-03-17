@@ -1,3 +1,5 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "laya"
 version = "0.1.0"
@@ -99,7 +101,7 @@ opentelemetry-otlp = { version = "0.28", default-features = false, features = [
     "http-proto",
     "reqwest-client",
 ] }
-opentelemetry-resource-detectors = "0.7.0"
+opentelemetry-resource-detectors = "0.7"
 opentelemetry-semantic-conventions = { version = "0.28", features = [
     "semconv_experimental",
 ] }

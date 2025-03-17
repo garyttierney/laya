@@ -20,6 +20,7 @@ use super::service::{
 };
 use crate::iiif::ImageServiceRequest;
 use crate::iiif::parse::ParseError as ImageRequestParseError;
+use crate::storage::StorageError;
 
 #[derive(Clone)]
 pub struct HttpImageService<S>
@@ -123,11 +124,9 @@ where
 
                 match inner.call(request).instrument(request_span).await {
                     Ok(response) => response.try_into(),
-                    Err(ImageServiceError::Storage(crate::storage::StorageError::NotFound)) => {
-                        Response::builder()
-                            .status(StatusCode::NOT_FOUND)
-                            .body(text_body("Image file not found"))
-                    }
+                    Err(ImageServiceError::Storage(StorageError::NotFound)) => Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(text_body("Image file not found")),
                     Err(e) => {
                         error!("failed to handle an image service request: {e:?}");
 

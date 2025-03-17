@@ -58,6 +58,7 @@ rt-tokio = ["dep:tokio"]
 rt-glommio = []
 
 [dependencies]
+byte-unit = { version = "5.1.6", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 color-eyre = { version = "0.6" }
 kaduceus = { version = "0.1.0", git = "https://github.com/digirati-co-uk/kaduceus", optional = true }

@@ -7,6 +7,8 @@ pub mod telemetry;
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use byte_unit::Byte;
+use bytes::Bytes;
 use clap::Parser;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
@@ -21,7 +23,7 @@ use storage::opendal::OpenDalStorageProvider;
 use tower::ServiceBuilder;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{ResponseBody, TraceLayer};
 use tracing::field::Empty;
 use tracing::info_span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -33,7 +35,7 @@ use tracing_opentelemetry_instrumentation_sdk::http::{
 use crate::image::codec::KaduceusImageReader;
 
 #[derive(Clone, Default, Debug, clap::ValueEnum)]
-pub enum Rt {
+pub enum Runtime {
     #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
     Glommio,
     #[cfg(feature = "rt-tokio")]
@@ -43,31 +45,33 @@ pub enum Rt {
 
 #[derive(clap::Parser, Debug)]
 pub struct LayaOptions {
-    /// Use a Tokio multi-threaded runtime to handle IO and server traffic.
-    #[arg(long, conflicts_with_all(["glommio"]), help_heading("Runtime"))]
-    tokio: bool,
+    /// Specifies the asynchronous runtime to execute I/O and networking tasks.
+    /// This controls the underlying event loop implementation that will be used.
+    #[arg(long)]
+    runtime: Runtime,
 
-    /// Use a Glommio thread-per-core runtime to handle IO and server traffic.
-    #[arg(long, conflicts_with_all(["tokio"]), help_heading("Runtime"))]
-    glommio: bool,
-
-    /// Disable sending trace and log data to an OTEL endpoint.
+    /// Disables the transmission of trace and log data to an OpenTelemetry endpoint.
+    /// When enabled, logs will only be emitted to stdout and trace events will not be available.
     #[arg(long, default_missing_value("true"))]
     disable_opentelemetry: bool,
 
-    /// Network address the HTTP server is bound to.
+    /// Specifies the network address to which the HTTP server will bind.
+    /// Format is HOST:PORT (e.g., 127.0.0.1:8080 or 0.0.0.0:80).
     #[arg(long, short, default_value("127.0.0.1:43594"))]
     bind_address: SocketAddr,
 
-    /// Prefix expected on any image requests.
+    /// Sets the URL path prefix expected on all image requests.
+    /// All API endpoints will be accessible under this prefix.
     #[arg(long, default_value("/"))]
     prefix: String,
 
-    /// Default media-type of encoded images when no preference is specified by the client.
+    /// Defines the default media type for encoded images when client
+    /// does not specify a preference via content negotiation.
     #[arg(long, default_value("image/jpeg"))]
     default_image_format: String,
 
-    /// Run Laya in development mode?
+    /// Enables development mode, which may include additional logging,
+    /// more verbose errors, and disabled optimizations.
     #[arg(long, default_missing_value("true"))]
     dev: bool,
 
@@ -86,36 +90,33 @@ pub struct ImageDecoderOptions {
 
 #[derive(clap::Args, Clone, Debug)]
 pub struct KakaduOptions {
-    /// The number of threads used to run image decoding operations. Defaults to the number of
-    /// available cores.
+    /// Specifies the number of threads used to run image decoding operations.
+    /// If not specified, defaults to the number of available CPU cores.
     #[arg(long("kakadu-decoder-threads"), help_heading("Kakadu"))]
     decoder_threads: Option<usize>,
 
-    /// The amount of memory allocated to Kakadu in bytes.
-    /// NOTE: failure to assign an upper bound on memory allocations may result in Kakadu panicking
-    /// during an image decode request.
+    /// Specifies the amount of memory allocated to Kakadu in units of bytes.
+    /// Accepts human-readable formats such as "50 MB", "1024 MiB", or "1GB".
+    ///
+    /// CAUTION: Failing to specify this option may result in unbounded memory
+    /// usage and potential application crashes during image decoding.
     #[arg(long("kakadu-memory-limit"), help_heading("Kakadu"))]
-    memory_limit: Option<usize>,
+    memory_limit: Option<Byte>,
 }
-
 #[derive(clap::Args, Clone, Debug)]
 pub struct TokioRuntimeOptions {
-    /// How many threads should be allocated to HTTP listener sockets?
+    /// Specifies the number of threads allocated to HTTP listener sockets.
+    /// This controls the concurrency of the socket accept operations.
     #[arg(
         long("tokio-listener-threads"),
-        requires("tokio"),
         help_heading("Tokio"),
         default_value("1")
     )]
     listener_threads: usize,
 
-    /// How many threads should be allocated to file and network IO?
-    #[arg(
-        long("tokio-io-threads"),
-        requires("tokio"),
-        help_heading("Tokio"),
-        default_value("1")
-    )]
+    /// Specifies the number of threads allocated to file and network I/O operations.
+    /// These threads handle all asynchronous operations involving disk or network access.
+    #[arg(long("tokio-io-threads"), help_heading("Tokio"), default_value("1"))]
     io_threads: usize,
 }
 
@@ -174,16 +175,15 @@ fn main() -> color_eyre::Result<()> {
         .service(http_service);
 
     let hyper_service = TowerToHyperService::new(tower_service);
-    let rt = Rt::Tokio;
 
-    match rt {
+    match options.runtime {
         #[cfg(all(feature = "rt-glommio", target_os = "linux"))]
-        Rt::Glommio => {
+        Runtime::Glommio => {
             todo!()
         }
 
         #[cfg(feature = "rt-tokio")]
-        Rt::Tokio => runtime::tokio::serve(options, hyper_service),
+        Runtime::Tokio => runtime::tokio::serve(options, hyper_service),
     }
 
     telemetry.shutdown(Duration::from_secs(5));

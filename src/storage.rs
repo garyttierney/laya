@@ -75,7 +75,7 @@ pub enum FileOrStream {
     /// Storage represented by a file on the filesystem.
     File(FileStream),
 
-    /// Storage represented by a stream.
+    /// Storage represented by a seekable stream.
     Stream(Box<dyn AsyncRead + Send>),
 }
 

@@ -62,10 +62,10 @@ where
     }
 }
 
-pub struct BytesStream(Box<dyn Stream<Item = Bytes> + Send + Sync + Unpin>);
+pub struct BytesStream(Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + Unpin>);
 
 impl Stream for BytesStream {
-    type Item = Bytes;
+    type Item = Result<Bytes, std::io::Error>;
 
     fn poll_next(
         mut self: Pin<&mut Self>,
@@ -164,8 +164,7 @@ impl TryInto<HttpImageServiceResponse> for ImageServiceResponse {
                 .body(BodyExt::boxed(Empty::new().map_err(|_| unreachable!()))),
 
             ImageServiceResponseKind::Image(image) => {
-                let body =
-                    StreamBody::new(BytesStream(image.data).map(|data| Ok(Frame::data(data))));
+                let body = StreamBody::new(image.data.map(|data| data.map(Frame::data)));
 
                 response
                     .status(StatusCode::OK)

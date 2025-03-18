@@ -1,16 +1,17 @@
 use std::future::Future;
+use std::io::Write;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use kaduceus::{KakaduContext, KakaduImage};
-use mediatype::MediaTypeBuf;
-use mediatype::names::{IMAGE, JP2};
+use bytes::{BufMut, BytesMut};
+use kaduceus::{KakaduContext, KakaduDecompressor, KakaduImage};
 use tokio::runtime::{Builder, Runtime};
+use tracing::info;
 
 use super::ImageReader;
 use crate::iiif::Region;
 use crate::image::info::{ImageInfo, PreferredSize, Tile};
-use crate::image::{BoxedImage, Image, ImageDecoder, ImageStream};
+use crate::image::{BoxedImage, Image, ImageDecoder};
 use crate::storage::FileOrStream;
 
 pub struct KaduceusImageReader {
@@ -60,17 +61,36 @@ impl Image for KakaduImage {
     }
 
     fn open_region(&mut self, region: Region) -> Box<dyn ImageDecoder> {
-        todo!()
+        let info = self.info();
+        let kdu_region = match region {
+            Region::Absolute { x, y, width, height } => kaduceus::Region { x, y, width, height },
+            Region::Full => kaduceus::Region { x: 0, y: 0, width: info.width, height: info.height },
+            _ => todo!(),
+        };
+
+        let decompressor = KakaduImage::open_region(self, kdu_region);
+        Box::new(decompressor)
     }
 }
 
-pub struct KaduceusImageDecoder {}
+impl ImageDecoder for KakaduDecompressor {
+    fn decode_to(&mut self, buffer: &mut BytesMut) -> bool {
+        let uninit = buffer.spare_capacity_mut();
 
-impl ImageDecoder for KaduceusImageDecoder {
-    fn decode(self) -> ImageStream {
-        let media_type = MediaTypeBuf::new(IMAGE, JP2);
+        // SAFETY: the buffer is never read by `process`
+        let uninit_buf = unsafe {
+            std::mem::transmute::<&mut [std::mem::MaybeUninit<u8>], &mut [u8]>(&mut uninit[..])
+        };
 
-        ImageStream { media_type, data: todo!() }
+        let region = self.process(uninit_buf).unwrap();
+
+        unsafe {
+            buffer.set_len(buffer.len() + region.width as usize * region.height as usize * 3);
+        }
+
+        info!(region=?region, "processed a region");
+
+        region.width == 0 || region.height == 0
     }
 }
 

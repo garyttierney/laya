@@ -1,13 +1,14 @@
 use std::ops::{Deref, DerefMut};
 
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use futures::Stream;
 use mediatype::MediaTypeBuf;
 
 pub mod codec;
-pub use codec::ImageReader;
 pub mod info;
+pub mod transcoding;
 
+pub use codec::ImageReader;
 use info::ImageInfo;
 
 use crate::iiif::Region;
@@ -16,11 +17,11 @@ use crate::iiif::Region;
 /// [mediatype::MediaType]
 pub struct ImageStream {
     pub media_type: MediaTypeBuf,
-    pub data: Box<dyn Stream<Item = Bytes> + Send + Sync + Unpin>,
+    pub data: Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync + Unpin>,
 }
 
 pub trait ImageDecoder {
-    fn decode(self) -> ImageStream;
+    fn decode_to(&mut self, buffer: &mut BytesMut) -> bool;
 }
 
 pub trait Image {

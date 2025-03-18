@@ -15,6 +15,7 @@ use tower::Service;
 use super::http::IiifRequestError;
 use super::{Format, Quality, Region, Rotation, Size};
 use crate::image::info::ImageInfo;
+use crate::image::transcoding::TranscodingPipeline;
 use crate::image::{BoxedImage, Image, ImageReader, ImageStream};
 use crate::storage::{StorageError, StorageProvider};
 
@@ -44,7 +45,7 @@ pub enum ImageServiceRequestKind {
 
 #[derive(Debug, PartialEq)]
 pub struct ImageParameters {
-    region: Region,
+    pub region: Region,
     size: Size,
     rotation: Rotation,
     quality: Quality,
@@ -182,7 +183,6 @@ impl Service<ImageServiceRequest> for ImageService {
 #[tracing::instrument(err, skip(image))]
 async fn handle_info_request(mut image: BoxedImage) -> Result<ImageInfo, ImageServiceError> {
     let info = image.info();
-
     Ok(info)
 }
 
@@ -191,29 +191,7 @@ async fn handle_image_request(
     image: BoxedImage,
     params: ImageParameters,
 ) -> Result<ImageStream, ImageServiceError> {
-    // let (decoded_tx, decoded_rx) = mpsc::channel(16);
-    // let decode_task = tokio::task::spawn_blocking(move || {
-    //     let decoder = image.open_region(params.region);
-    //     let mut buffer = BytesMut::default();
+    let pipeline = TranscodingPipeline { image, params };
 
-    //     while decoder.process(&mut buffer) {
-    //         let buf = std::mem::replace(&mut buffer, BytesMut::default());
-
-    //         if let Err(_) = decoded_tx.blocking_send(buf.freeze()) {
-    //             warn!("image decoding task was cancelled prematurely");
-    //             return;
-    //         }
-    //     }
-    // });
-
-    // let (encoded_tx, encoded_rx) = mpsc::channel(16);
-    // let encode_task = tokio::task::spawn_blocking(move || {
-    //     let encoder = todo!() /* API TBD */;
-    //     let mut buffer = BytesMut::default();
-
-    //     while let Some(data) = decoded_rx.blocking_recv() {
-    //         encoder.encode(data, &mut buffer);
-    //     }
-    // });
-    todo!()
+    Ok(pipeline.run())
 }

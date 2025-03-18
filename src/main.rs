@@ -8,7 +8,6 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use byte_unit::Byte;
-use bytes::Bytes;
 use clap::Parser;
 use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, COOKIE};
@@ -23,7 +22,7 @@ use storage::opendal::OpenDalStorageProvider;
 use tower::ServiceBuilder;
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::timeout::TimeoutLayer;
-use tower_http::trace::{ResponseBody, TraceLayer};
+use tower_http::trace::TraceLayer;
 use tracing::field::Empty;
 use tracing::info_span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -47,7 +46,7 @@ pub enum Runtime {
 pub struct LayaOptions {
     /// Specifies the asynchronous runtime to execute I/O and networking tasks.
     /// This controls the underlying event loop implementation that will be used.
-    #[arg(long)]
+    #[arg(long, default_value("tokio"))]
     runtime: Runtime,
 
     /// Disables the transmission of trace and log data to an OpenTelemetry endpoint.

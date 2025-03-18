@@ -1,11 +1,10 @@
-cargo-features = ["edition2024"]
-
 [package]
 name = "laya"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0 OR MIT"
 publish = false
+rust-version = "1.85"
 
 # Config for 'cargo dist'
 [[workspace.metadata.distributions]]
@@ -134,3 +133,5 @@ mediatype = "0.19.20"
 palette = "0.7.6"
 chrono = "0.4.40"
 httpdate = "1.0.3"
+tokio-stream = "0.1.17"
+mozjpeg = { version = "0.10.13", features = ["parallel", "with_simd"] }

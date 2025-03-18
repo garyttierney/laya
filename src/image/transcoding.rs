@@ -23,6 +23,31 @@ use crate::iiif::service::ImageParameters;
 pub mod decode;
 pub mod encode;
 
+/// Coordinates the processing of an image according to IIIF parameters.
+///
+/// This struct orchestrates the decoding, transformation, and encoding of image data
+/// in an efficient, streaming manner. It's designed to handle large images by
+/// processing them in chunks rather than loading the entire image into memory.
+///
+/// The pipeline spawns separate tasks for decoding and encoding, connected by channels:
+/// 1. A decoder task extracts and processes the requested region of the source image
+/// 2. An encoder task compresses the image data to the target format
+/// 3. The resulting stream yields compressed image data as it becomes available
+///
+/// # Example
+///
+/// ```
+/// use laya::iiif::service::ImageParameters;
+/// use laya::image::transcoding::TranscodingPipeline;
+///
+/// let pipeline = TranscodingPipeline {
+///     image: source_image,
+///     params: image_parameters,
+/// };
+///
+/// // Run the pipeline and get a stream of encoded image data
+/// let image_stream = pipeline.run();
+/// ```
 pub struct TranscodingPipeline {
     pub image: BoxedImage,
     pub params: ImageParameters,
@@ -66,7 +91,7 @@ pub struct SenderWriter {
 
 impl SenderWriter {
     pub fn new(sender: Sender<Bytes>) -> SenderWriter {
-        Self { buffer: BytesMut::with_capacity(4096), sender }
+        Self { buffer: BytesMut::with_capacity(4096 * 16), sender }
     }
 }
 
@@ -123,6 +148,16 @@ impl TranscodingPipeline {
     }
 }
 
+/// A stream that yields encoded image data from a transcoding pipeline.
+///
+/// `TranscodedStream` coordinates between the image decoder and encoder tasks,
+/// managing their lifecycle and propagating errors appropriately. It implements
+/// the [Stream] trait to produce a sequence of [Bytes] containing the encoded image.
+///
+/// The stream completes when:
+/// - All transcoding tasks complete successfully and all encoded data is yielded
+/// - An error occurs in any task, causing cancellation of the pipeline
+/// - The associated cancellation token is triggered externally
 pub struct TranscodedStream {
     task_set: JoinSet<Result<(), TranscodingError>>,
     token: CancellationToken,

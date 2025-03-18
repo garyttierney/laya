@@ -17,7 +17,7 @@ pub fn decode_task(
     let mut decoder = image.open_region(params.region);
 
     // Process up to 32 scanlines at a time
-    let buffer_capacity = info.width as usize * 32 * 3;
+    let buffer_capacity = info.width as usize * 1024 * 3;
     let mut buffer = BytesMut::with_capacity(buffer_capacity);
 
     while !token.is_cancelled() && !decoder.decode_to(&mut buffer) {
@@ -28,6 +28,8 @@ pub fn decode_task(
             return Ok(());
         }
     }
+
+    drop(buffer);
 
     Ok(())
 }

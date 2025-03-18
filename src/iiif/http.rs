@@ -122,7 +122,7 @@ where
 
                 request_span.record("otel.name", format!("{} {route}", request_method));
 
-                match inner.call(request).instrument(request_span).await {
+                match inner.call(request).await {
                     Ok(response) => response.try_into(),
                     Err(ImageServiceError::Storage(StorageError::NotFound)) => Response::builder()
                         .status(StatusCode::NOT_FOUND)

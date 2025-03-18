@@ -11,6 +11,7 @@ use hyper::Request;
 use hyper::body::Incoming;
 use hyper::header::IF_MODIFIED_SINCE;
 use tower::Service;
+use tracing::{Instrument, info_span};
 
 use super::http::IiifRequestError;
 use super::{Format, Quality, Region, Rotation, Size};
@@ -140,36 +141,40 @@ impl Service<ImageServiceRequest> for ImageService {
     fn call(&mut self, req: ImageServiceRequest) -> Self::Future {
         let storage = self.storage.clone();
         let reader = self.reader.clone();
+        let span = info_span!("handle_image_request");
 
-        Box::pin(async move {
-            let data = storage
-                .open(&req.identifier)
-                .await
-                .map_err(ImageServiceError::Storage)?;
+        Box::pin(
+            async move {
+                let data = storage
+                    .open(&req.identifier)
+                    .await
+                    .map_err(ImageServiceError::Storage)?;
 
-            if req
-                .last_access_time
-                .zip(data.last_modified)
-                .is_some_and(|(atime, mtime)| atime >= mtime)
-            {
-                return Ok(ImageServiceResponse {
-                    kind: ImageServiceResponseKind::CacheHit,
-                    last_modified_time: data.last_modified,
-                });
+                if req
+                    .last_access_time
+                    .zip(data.last_modified)
+                    .is_some_and(|(atime, mtime)| atime >= mtime)
+                {
+                    return Ok(ImageServiceResponse {
+                        kind: ImageServiceResponseKind::CacheHit,
+                        last_modified_time: data.last_modified,
+                    });
+                }
+
+                let image = reader.read(data.name, data.content).await;
+                let kind = match req.kind {
+                    ImageServiceRequestKind::Info => handle_info_request(image)
+                        .await
+                        .map(ImageServiceResponseKind::Info),
+                    ImageServiceRequestKind::Image(params) => handle_image_request(image, params)
+                        .await
+                        .map(ImageServiceResponseKind::Image),
+                }?;
+
+                Ok(ImageServiceResponse { kind, last_modified_time: data.last_modified })
             }
-
-            let image = reader.read(data.name, data.content).await;
-            let kind = match req.kind {
-                ImageServiceRequestKind::Info => handle_info_request(image)
-                    .await
-                    .map(ImageServiceResponseKind::Info),
-                ImageServiceRequestKind::Image(params) => handle_image_request(image, params)
-                    .await
-                    .map(ImageServiceResponseKind::Image),
-            }?;
-
-            Ok(ImageServiceResponse { kind, last_modified_time: data.last_modified })
-        })
+            .instrument(span),
+        )
     }
 
     fn poll_ready(

@@ -25,6 +25,7 @@ pub fn encode_task(
 
             if let Some(input) = input_channel.blocking_recv() {
                 output.write_scanlines(&input[..])?;
+                drop(input);
             } else {
                 break;
             }

@@ -1,3 +1,7 @@
+#[global_allocator]
+#[cfg(feature = "mimalloc")]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 pub mod iiif;
 pub mod image;
 pub mod runtime;

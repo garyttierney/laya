@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use chrono::Timelike;
 use opendal::{Builder, Operator};
@@ -7,7 +8,7 @@ use opendal::{Builder, Operator};
 use super::{FileOrStream, StorageError, StorageObject, StorageProvider};
 
 pub struct OpenDalStorageProvider {
-    operator: Operator,
+    operator: Arc<Operator>,
 }
 
 impl OpenDalStorageProvider {
@@ -16,7 +17,7 @@ impl OpenDalStorageProvider {
             .layer(opendal::layers::TracingLayer)
             .finish();
 
-        Ok(Self { operator })
+        Ok(Self { operator: Arc::new(operator) })
     }
 }
 
@@ -41,7 +42,8 @@ impl StorageProvider for OpenDalStorageProvider {
     }
 }
 
-async fn open(operator: Operator, path: String) -> Result<StorageObject, StorageError> {
+#[tracing::instrument]
+async fn open(operator: Arc<Operator>, path: String) -> Result<StorageObject, StorageError> {
     let stat = operator.stat(&path).await?;
     let reader = operator
         .reader(&path)

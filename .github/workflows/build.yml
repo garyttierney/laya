@@ -102,7 +102,7 @@ jobs:
             -u "${{ steps.login-ecr.outputs.docker_username_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}" \
             -p "${{ steps.login-ecr.outputs.docker_password_167865917244_dkr_ecr_eu_west_1_amazonaws_com }}" \
             ${{ env.REGISTRY }}
-        if: matrix.docker != false
+        if: ${{ matrix.docker != 'disabled' }}
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -132,7 +132,7 @@ jobs:
 
           digest=$(</tmp/digest)
           echo "digest=$digest" >> $GITHUB_OUTPUT
-        if: matrix.docker != false
+        if: ${{ matrix.docker != 'disabled' }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
@@ -140,14 +140,14 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-        if: matrix.docker != false
+        if: ${{ matrix.docker != 'disabled' }}
 
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
-        if: matrix.docker != false
+        if: ${{ matrix.docker != 'disabled' }}
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
@@ -156,7 +156,7 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
-        if: matrix.docker != false
+        if: ${{ matrix.docker != 'disabled' }}
 
   merge-container-manifests:
     name: Merge Docker manifests

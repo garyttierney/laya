@@ -59,6 +59,7 @@ jobs:
     needs: plan
     name: "${{ matrix.name }} (Native)"
     runs-on: "${{ matrix.runner || 'ubuntu-24.04' }}"
+    continue-on-error: ${{ matrix.optional || false }}
     permissions:
       contents: read
       packages: write

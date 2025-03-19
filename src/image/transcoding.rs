@@ -194,12 +194,10 @@ impl Stream for TranscodedStream {
 
         let inner = pin!(&mut this.receiver);
 
-        if let Poll::Ready(Some(msg)) = inner.poll_next(cx) {
-            return Poll::Ready(Some(Ok(msg)));
-        }
-
-        if this.task_set.is_empty() {
-            return Poll::Ready(None);
+        match inner.poll_next(cx) {
+            Poll::Ready(Some(data)) => return Poll::Ready(Some(Ok(data))),
+            Poll::Ready(None) if this.task_set.is_empty() => return Poll::Ready(None),
+            _ => {}
         }
 
         Poll::Pending

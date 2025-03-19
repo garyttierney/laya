@@ -75,6 +75,10 @@ jobs:
         run: sudo apt install -y buildah
         if: endsWith(matrix.runner, 'arm')
 
+      - name: Update LLVM on OS X
+        run: brew install llvm
+        if: startsWith(matrix.runner, 'macos')
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive

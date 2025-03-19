@@ -46,7 +46,8 @@ docker = "linux/arm64/v8"
 name = "apple"
 triple = "aarch64-apple-darwin"
 cpu = "apple-latest"
-runner = "macos-latest"
+runner = "macos-15"
+docker = false
 
 [profile.release]
 lto = "thin"

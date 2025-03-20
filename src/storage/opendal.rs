@@ -33,7 +33,7 @@ impl StorageProvider for OpenDalStorageProvider {
 #[tracing::instrument]
 async fn open(path: String) -> Result<StorageObject, StorageError> {
     let (operator, path) = match path.parse::<Uri>() {
-        Ok(uri) => {
+        Ok(uri) if uri.scheme_str() == Some("s3") => {
             let (region, bucket_and_path) = uri
                 .path()
                 .split_once('/')
@@ -49,7 +49,7 @@ async fn open(path: String) -> Result<StorageObject, StorageError> {
                 bucket_key.to_string(),
             )
         }
-        Err(_) => (
+        _ => (
             Operator::new(Fs::default().root("test-data"))?
                 .layer(TracingLayer)
                 .finish(),

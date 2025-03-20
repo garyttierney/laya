@@ -5,6 +5,7 @@ pub mod storage;
 pub mod telemetry;
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use byte_unit::Byte;
@@ -79,6 +80,9 @@ pub struct LayaOptions {
 
     #[command(flatten)]
     image_decoder_options: ImageDecoderOptions,
+
+    #[command(flatten)]
+    storage_options: StorageOptions,
 }
 
 #[derive(clap::Args, Clone, Debug)]
@@ -102,6 +106,19 @@ pub struct KakaduOptions {
     #[arg(long("kakadu-memory-limit"), help_heading("Kakadu"))]
     memory_limit: Option<Byte>,
 }
+
+#[derive(clap::Args, Clone, Debug)]
+pub struct StorageOptions {
+    /// The location the image server expects to find image files at on a local filesystem.
+    #[arg(
+        long("fs-storage-path"),
+        required(true),
+        default_value("test-data"),
+        help_heading("Storage")
+    )]
+    fs_storage_path: PathBuf,
+}
+
 #[derive(clap::Args, Clone, Debug)]
 pub struct TokioRuntimeOptions {
     /// Specifies the number of threads allocated to HTTP listener sockets.
@@ -128,7 +145,10 @@ fn main() -> color_eyre::Result<()> {
     let kdu_context = KakaduContext::default();
     let kdu_image_reader = KaduceusImageReader::new(kdu_context);
 
-    let image_service = ImageService::new(OpenDalStorageProvider, kdu_image_reader);
+    let image_service = ImageService::new(
+        OpenDalStorageProvider::new(options.storage_options.fs_storage_path.clone()),
+        kdu_image_reader,
+    );
     let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
     let tower_service = ServiceBuilder::new()
         .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))

@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -10,7 +11,15 @@ use opendal::{Builder, Operator};
 
 use super::{FileOrStream, StorageError, StorageObject, StorageProvider};
 
-pub struct OpenDalStorageProvider;
+pub struct OpenDalStorageProvider {
+    path: PathBuf,
+}
+
+impl OpenDalStorageProvider {
+    pub(crate) fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
 
 impl From<opendal::Error> for StorageError {
     fn from(value: opendal::Error) -> Self {
@@ -26,12 +35,12 @@ impl StorageProvider for OpenDalStorageProvider {
         &self,
         id: &str,
     ) -> Pin<Box<dyn Future<Output = Result<StorageObject, StorageError>> + Send + 'static>> {
-        Box::pin(open(id.to_string()))
+        Box::pin(open(self.path.clone(), id.to_string()))
     }
 }
 
 #[tracing::instrument]
-async fn open(path: String) -> Result<StorageObject, StorageError> {
+async fn open(local_root: PathBuf, path: String) -> Result<StorageObject, StorageError> {
     let (operator, path) = match path.parse::<Uri>() {
         Ok(uri) if uri.scheme_str() == Some("s3") => {
             let (region, bucket_and_path) = uri
@@ -50,9 +59,11 @@ async fn open(path: String) -> Result<StorageObject, StorageError> {
             )
         }
         _ => (
-            Operator::new(Fs::default().root("test-data"))?
-                .layer(TracingLayer)
-                .finish(),
+            Operator::new(
+                Fs::default().root(local_root.to_str().expect("invalid root path provided")),
+            )?
+            .layer(TracingLayer)
+            .finish(),
             path.to_string(),
         ),
     };

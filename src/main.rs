@@ -128,11 +128,7 @@ fn main() -> color_eyre::Result<()> {
     let kdu_context = KakaduContext::default();
     let kdu_image_reader = KaduceusImageReader::new(kdu_context);
 
-    let storage = Fs::default().root("test-data");
-    let storage_provider =
-        OpenDalStorageProvider::new(storage).expect("failed to create storage provider");
-
-    let image_service = ImageService::new(storage_provider, kdu_image_reader);
+    let image_service = ImageService::new(OpenDalStorageProvider, kdu_image_reader);
     let http_service = HttpImageService::new_with_prefix(image_service, &options.prefix);
     let tower_service = ServiceBuilder::new()
         .layer(SetSensitiveRequestHeadersLayer::new([AUTHORIZATION, COOKIE]))

@@ -3,23 +3,14 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use chrono::Timelike;
+use hyper::Uri;
+use opendal::layers::TracingLayer;
+use opendal::services::{Fs, S3};
 use opendal::{Builder, Operator};
 
 use super::{FileOrStream, StorageError, StorageObject, StorageProvider};
 
-pub struct OpenDalStorageProvider {
-    operator: Arc<Operator>,
-}
-
-impl OpenDalStorageProvider {
-    pub fn new<T: Builder>(builder: T) -> Result<Self, opendal::Error> {
-        let operator = Operator::new(builder)?
-            .layer(opendal::layers::TracingLayer)
-            .finish();
-
-        Ok(Self { operator: Arc::new(operator) })
-    }
-}
+pub struct OpenDalStorageProvider;
 
 impl From<opendal::Error> for StorageError {
     fn from(value: opendal::Error) -> Self {
@@ -35,15 +26,32 @@ impl StorageProvider for OpenDalStorageProvider {
         &self,
         id: &str,
     ) -> Pin<Box<dyn Future<Output = Result<StorageObject, StorageError>> + Send + 'static>> {
-        let operator = self.operator.clone();
-        let path = id.to_string();
-
-        Box::pin(open(operator, path))
+        Box::pin(open(id.to_string()))
     }
 }
 
 #[tracing::instrument]
-async fn open(operator: Arc<Operator>, path: String) -> Result<StorageObject, StorageError> {
+async fn open(path: String) -> Result<StorageObject, StorageError> {
+    let (operator, path) = match path.parse::<Uri>() {
+        Ok(uri) => {
+            let (region, bucket_and_path) = uri.path().split_once('/').unwrap();
+            let (bucket, bucket_key) = bucket_and_path.split_once('/').unwrap();
+
+            (
+                Operator::new(S3::default().bucket(bucket).region(region))?
+                    .layer(TracingLayer)
+                    .finish(),
+                bucket_key.to_string(),
+            )
+        }
+        Err(_) => (
+            Operator::new(Fs::default().root("test-data"))?
+                .layer(TracingLayer)
+                .finish(),
+            path.to_string(),
+        ),
+    };
+
     let stat = operator.stat(&path).await?;
     let reader = operator
         .reader(&path)

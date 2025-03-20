@@ -60,7 +60,7 @@ async fn open(local_root: PathBuf, path: String) -> Result<StorageObject, Storag
             );
 
             (
-                Operator::new(S3::default().bucket(bucket).region(region))?
+                Operator::new(S3::default().region(region).bucket(bucket))?
                     .layer(TracingLayer)
                     .finish(),
                 bucket_key.to_string(),

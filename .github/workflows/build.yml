@@ -79,7 +79,7 @@ jobs:
       - name: Update LLVM on OS X
         run: |
           brew install llvm
-          echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> /Users/runner/.bash_profile
+          echo PATH="/opt/homebrew/opt/llvm/bin:$PATH" >> $GITHUB_ENV
         if: startsWith(matrix.runner, 'macos')
 
       - uses: actions/checkout@v4

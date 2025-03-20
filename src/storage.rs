@@ -5,11 +5,12 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use futures::AsyncRead;
+use futures::{AsyncRead, AsyncSeek};
+use kaduceus::AsyncSeekableRead;
 
 pub mod opendal;
 
-pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncRead> + Send>;
+pub type FileStreamProvider = Box<dyn FnOnce(&Path) -> Box<dyn AsyncSeekableRead> + Send>;
 
 /// An object stored by a storage provider.
 ///
@@ -76,12 +77,12 @@ pub enum FileOrStream {
     File(FileStream),
 
     /// Storage represented by a seekable stream.
-    Stream(Box<dyn AsyncRead + Send>),
+    Stream(Box<dyn AsyncSeekableRead + Send>),
 }
 
 impl FileOrStream {
     /// Get the contents of this value as an asynchronus stream, regardless of local availability.
-    pub fn as_stream(self) -> Box<dyn AsyncRead> {
+    pub fn as_stream(self) -> Box<dyn AsyncSeekableRead> {
         match self {
             FileOrStream::File(stream) => (stream.stream_factory)(&stream.path),
             FileOrStream::Stream(stream) => stream,

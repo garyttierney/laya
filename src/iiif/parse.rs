@@ -190,7 +190,16 @@ impl FromStr for Size {
                 Some(parse_scale_px(height)?)
             };
 
-            Scale::Fixed { width, height }
+            match (width, height) {
+                (Some(width), Some(height)) => Scale::Fixed { width, height },
+                (Some(width), None) => Scale::FixedWidth(width),
+                (None, Some(height)) => Scale::FixedHeight(height),
+                (None, None) => {
+                    return Err(ParseError::SizeDimensionOutOfBounds(
+                        "image dimensions must be greater than 0".into(),
+                    ));
+                }
+            }
         };
 
         Ok(Size { upscale, scale })

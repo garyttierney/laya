@@ -135,19 +135,23 @@ impl TranscodingPipeline {
         let ratio_h = info.height / dims_gcd;
 
         let size = match params.size.scale() {
-            Scale::Max => (info.width, info.height),
-            Scale::Fixed { width: Some(scaled_width), height: Some(scaled_height) } => {
+            Scale::Max => (absolute_region.width, absolute_region.height),
+            Scale::Fixed { width: scaled_width, height: scaled_height } => {
                 (scaled_width.get(), scaled_height.get())
             }
-            Scale::Fixed { width: Some(scaled_width), height: None } => {
+            Scale::FixedWidth(scaled_width) => {
                 (scaled_width.get(), (scaled_width.get() * ratio_h) / ratio_w)
             }
-            Scale::Fixed { width: None, height: Some(scaled_height) } => {
+            Scale::FixedHeight(scaled_height) => {
                 ((scaled_height.get() * ratio_w) / ratio_h, scaled_height.get())
             }
-            Scale::Fixed { width: None, height: None } => unreachable!(),
-            Scale::Percentage(_) => todo!(),
-            Scale::AspectPreserving { width, height } => todo!(),
+            Scale::Percentage(pct) => {
+                let scaled_x = absolute_region.width as f32 / 100.0 * pct;
+                let scaled_y = absolute_region.height as f32 / 100.0 * pct;
+
+                (scaled_x.ceil() as u32, scaled_y.ceil() as u32)
+            }
+            Scale::AspectPreserving { .. } => todo!(),
         };
 
         info!("Calculated dimensions ({size:?}) for scale params: {:?}", params.size.scale());

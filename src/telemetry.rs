@@ -99,12 +99,12 @@ pub fn install_telemetry_collector(disable_otel: bool) -> TelemetryHandle {
     let formatting_layer = tracing_subscriber::fmt::layer();
 
     tracing_subscriber::registry()
+        .with(ErrorLayer::default())
         .with(match formatter.as_str() {
             "compact" => formatting_layer.compact().boxed(),
             "json" => formatting_layer.json().boxed(),
             _ => formatting_layer.pretty().boxed(),
         })
-        .with(ErrorLayer::default())
         .with(
             EnvFilter::builder()
                 .with_default_directive(Level::TRACE.into())

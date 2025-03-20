@@ -48,21 +48,23 @@ impl Size {
 pub enum Scale {
     Max,
     Percentage(f32),
-    Fixed { width: Option<NonZero<Dimension>>, height: Option<NonZero<Dimension>> },
+    FixedWidth(NonZero<Dimension>),
+    FixedHeight(NonZero<Dimension>),
+    Fixed { width: NonZero<Dimension>, height: NonZero<Dimension> },
     AspectPreserving { width: NonZero<Dimension>, height: NonZero<Dimension> },
 }
 
 impl Scale {
     pub fn fixed(width: Option<NonZero<Dimension>>, height: Option<NonZero<Dimension>>) -> Scale {
-        Scale::Fixed { width, height }
+        Scale::Fixed { width: width.unwrap(), height: height.unwrap() }
     }
 
     pub fn fixed_height(height: Option<NonZero<Dimension>>) -> Scale {
-        Scale::Fixed { width: None, height }
+        Scale::FixedHeight(height.expect("expected non-zero height"))
     }
 
     pub fn fixed_width(width: Option<NonZero<Dimension>>) -> Scale {
-        Scale::Fixed { width, height: None }
+        Scale::FixedWidth(width.expect("expected non-zero width"))
     }
 }
 

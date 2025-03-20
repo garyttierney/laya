@@ -7,5 +7,10 @@
 			"path": "../kdurs"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"*.sf": "poe2-filter",
+			"*.rs": "rust"
+		}
+	}
 }

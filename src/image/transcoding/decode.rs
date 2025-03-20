@@ -5,16 +5,18 @@ use tracing::warn;
 
 use super::TranscodingError;
 use crate::iiif::service::ImageParameters;
-use crate::image::BoxedImage;
+use crate::iiif::{Dimension, Region, Scale, Size};
+use crate::image::{AbsoluteRegion, BoxedImage, Dimensions};
 
 pub fn decode_task(
     token: CancellationToken,
     mut image: BoxedImage,
-    params: ImageParameters,
+    absolute_region: AbsoluteRegion,
+    size: Dimensions,
     output_channel: Sender<Bytes>,
 ) -> Result<(), TranscodingError> {
     let info = image.info();
-    let mut decoder = image.open_region(params.region);
+    let mut decoder = image.open_region(absolute_region, size);
     let scanlines = info
         .tiles
         .map(|tile| {
@@ -26,7 +28,7 @@ pub fn decode_task(
         })
         .unwrap();
     // Process up to 32 scanlines at a time
-    let buffer_capacity = info.width as usize * scanlines as usize * 3;
+    let buffer_capacity = info.width as usize * info.height as usize * 3;
     let mut buffer = BytesMut::with_capacity(buffer_capacity);
 
     while !token.is_cancelled() && !decoder.decode_to(&mut buffer) {

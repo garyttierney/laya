@@ -144,3 +144,4 @@ httpdate = "1.0.3"
 tokio-stream = "0.1.17"
 mozjpeg = { version = "0.10.13", features = ["parallel", "with_simd"] }
 mimalloc = { version = "0.1", optional = true }
+gcd = "2.3.0"

@@ -9,9 +9,9 @@ use tokio::runtime::{Builder, Runtime};
 use tracing::info;
 
 use super::ImageReader;
-use crate::iiif::Region;
+use crate::iiif::{Dimension, Region};
 use crate::image::info::{ImageInfo, PreferredSize, Tile};
-use crate::image::{BoxedImage, Image, ImageDecoder};
+use crate::image::{AbsoluteRegion, BoxedImage, Image, ImageDecoder};
 use crate::storage::FileOrStream;
 
 pub struct KaduceusImageReader {
@@ -60,15 +60,22 @@ impl Image for KakaduImage {
         }
     }
 
-    fn open_region(&mut self, region: Region) -> Box<dyn ImageDecoder> {
+    fn open_region(
+        &mut self,
+        region: AbsoluteRegion,
+        scaled_to: (Dimension, Dimension),
+    ) -> Box<dyn ImageDecoder> {
         let info = self.info();
-        let kdu_region = match region {
-            Region::Absolute { x, y, width, height } => kaduceus::Region { x, y, width, height },
-            Region::Full => kaduceus::Region { x: 0, y: 0, width: info.width, height: info.height },
-            _ => todo!(),
+        let (scaled_width, scaled_height) = scaled_to;
+        let kdu_region = kaduceus::Region {
+            x: region.x,
+            y: region.y,
+            width: region.width,
+            height: region.height,
         };
 
-        let decompressor = KakaduImage::open_region(self, kdu_region);
+        let decompressor = KakaduImage::open_region(self, kdu_region, scaled_width, scaled_height);
+
         Box::new(decompressor)
     }
 }
@@ -91,6 +98,10 @@ impl ImageDecoder for KakaduDecompressor {
         info!(region=?region, "processed a region");
 
         region.width == 0 || region.height == 0
+    }
+
+    fn output_size(&self) -> crate::image::Dimensions {
+        todo!()
     }
 }
 

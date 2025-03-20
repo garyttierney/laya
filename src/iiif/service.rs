@@ -47,7 +47,7 @@ pub enum ImageServiceRequestKind {
 #[derive(Debug, PartialEq)]
 pub struct ImageParameters {
     pub region: Region,
-    size: Size,
+    pub size: Size,
     rotation: Rotation,
     quality: Quality,
     format: Format,

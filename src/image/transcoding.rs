@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt::Display;
 use std::io::Write;
+use std::ops::Div;
 use std::pin::pin;
 use std::task::Poll;
 
@@ -9,16 +10,18 @@ use decode::decode_task;
 use encode::encode_task;
 use futures::stream::Fuse;
 use futures::{Stream, StreamExt};
+use gcd::Gcd;
 use mediatype::MediaTypeBuf;
 use mediatype::names::{IMAGE, JPEG};
 use tokio::sync::mpsc::{self, Sender};
 use tokio::task::JoinSet;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info_span};
+use tracing::{error, info, info_span};
 
-use super::{BoxedImage, ImageStream};
+use super::{AbsoluteRegion, BoxedImage, ImageStream};
 use crate::iiif::service::ImageParameters;
+use crate::iiif::{Region, Scale};
 
 pub mod decode;
 pub mod encode;
@@ -121,12 +124,41 @@ impl TranscodingPipeline {
         let token = CancellationToken::new();
         let mut task_set = JoinSet::new();
 
+        let absolute_region = match params.region {
+            Region::Absolute { x, y, width, height } => AbsoluteRegion { x, y, width, height },
+            Region::Full => AbsoluteRegion { x: 0, y: 0, width: info.width, height: info.height },
+            _ => todo!(),
+        };
+
+        let dims_gcd = info.width.gcd(info.height);
+        let ratio_w = info.width / dims_gcd;
+        let ratio_h = info.height / dims_gcd;
+
+        let size = match params.size.scale() {
+            Scale::Max => (info.width, info.height),
+            Scale::Fixed { width: Some(scaled_width), height: Some(scaled_height) } => {
+                (scaled_width.get(), scaled_height.get())
+            }
+            Scale::Fixed { width: Some(scaled_width), height: None } => {
+                (scaled_width.get(), (scaled_width.get() * ratio_h) / ratio_w)
+            }
+            Scale::Fixed { width: None, height: Some(scaled_height) } => {
+                ((scaled_height.get() * ratio_w) / ratio_h, scaled_height.get())
+            }
+            Scale::Fixed { width: None, height: None } => unreachable!(),
+            Scale::Percentage(_) => todo!(),
+            Scale::AspectPreserving { width, height } => todo!(),
+        };
+
+        info!("Calculated dimensions ({size:?}) for scale params: {:?}", params.size.scale());
+
         let decoder_token = token.clone();
         let decoder_span = info_span!("image_decoder", decoder = "kakadu");
         let (decoded_tx, decoded_rx) = mpsc::channel(4);
 
         task_set.spawn_blocking(move || -> Result<(), TranscodingError> {
-            decoder_span.in_scope(|| decode_task(decoder_token, image, params, decoded_tx))
+            decoder_span
+                .in_scope(|| decode_task(decoder_token, image, absolute_region, size, decoded_tx))
         });
 
         let encoder_token = token.clone();
@@ -134,7 +166,7 @@ impl TranscodingPipeline {
         let (encoded_tx, encoded_rx) = mpsc::channel(4);
 
         task_set.spawn_blocking(move || -> Result<(), TranscodingError> {
-            encoder_span.in_scope(|| encode_task(encoder_token, decoded_rx, encoded_tx, info))
+            encoder_span.in_scope(|| encode_task(encoder_token, size, decoded_rx, encoded_tx, info))
         });
 
         ImageStream {

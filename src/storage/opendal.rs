@@ -8,6 +8,7 @@ use hyper::Uri;
 use opendal::layers::TracingLayer;
 use opendal::services::{Fs, S3};
 use opendal::{Builder, Operator};
+use tracing::info;
 
 use super::{FileOrStream, StorageError, StorageObject, StorageProvider};
 
@@ -50,6 +51,13 @@ async fn open(local_root: PathBuf, path: String) -> Result<StorageObject, Storag
             let (bucket, bucket_key) = bucket_and_path
                 .split_once('/')
                 .ok_or(StorageError::Other("invalid S3 bucket/key specification".into()))?;
+
+            info!(
+                region = region,
+                bucket = bucket,
+                bucket_key = bucket_key,
+                "recognised image path as S3 object"
+            );
 
             (
                 Operator::new(S3::default().bucket(bucket).region(region))?
